@@ -25,44 +25,6 @@ Hệ thống học và thực hành đầu tư chứng khoán với AI, sử d�
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Cấu Trúc Thư Mục
-
-```
-learning_stock_market_investing/
-├── backend/                  # Backend API (FastAPI)
-│   ├── app/
-│   │   ├── models/          # SQLAlchemy models
-│   │   ├── schemas/         # Pydantic schemas
-│   │   ├── controllers/     # FastAPI route handlers
-│   │   ├── services/        # Business logic
-│   │   ├── repositories/    # Data access layer
-│   │   └── main.py         # FastAPI app
-│   └── requirements.txt
-│
-├── data_collectors/          # Scripts thu thập dữ liệu
-│   ├── dnse.py              # Real-time ticks từ DNSE
-│   ├── download_vnstock_latest.py  # Historical data từ Vnstock
-│   ├── fetch_dnse_symbols.py       # Lấy danh sách symbols
-│   └── check_vnstock_symbols.py    # Kiểm tra symbols
-│
-├── websocket/               # WebSocket server
-│   ├── websocket_server.py  # WebSocket server cho real-time
-│   └── test_websocket_client.html  # Test client
-│
-├── frontend/                # Frontend (sẽ phát triển)
-│   └── index.html
-│
-├── docs/                    # Tài liệu
-│   ├── SYSTEM_ARCHITECTURE_SOLUTION.md
-│   ├── NEXT_STEPS_AFTER_DATA_COLLECTION.md
-│   └── ...
-│
-├── sql/                     # SQL scripts
-│   └── *.sql
-│
-└── README.md
-```
-
 ## Bắt Đầu
 
 ### 1. Setup Environment
@@ -121,12 +83,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 python websocket/websocket_server.py
 ```
 
-## Tài Liệu
-
-- [System Architecture Solution](docs/SYSTEM_ARCHITECTURE_SOLUTION.md)
-- [Next Steps After Data Collection](docs/NEXT_STEPS_AFTER_DATA_COLLECTION.md)
-- [VNStock to ClickHouse Migration](docs/VNSTOCK_TO_CLICKHOUSE_MIGRATION.md)
-
 ## Công Nghệ Sử Dụng
 
 - **Backend**: FastAPI, SQLAlchemy, Pydantic
@@ -135,18 +91,4 @@ python websocket/websocket_server.py
 - **Data Collection**: DNSE API, Vnstock API
 - **Frontend**: TradingView Lightweight Charts (sẽ phát triển)
 
-## Roadmap
-
-Xem [NEXT_STEPS_AFTER_DATA_COLLECTION.md](docs/NEXT_STEPS_AFTER_DATA_COLLECTION.md) để biết các bước tiếp theo.
-
-## Đóng Góp
-
-1. Fork project
-2. Tạo feature branch
-3. Commit changes
-4. Push và tạo Pull Request
-
-## License
-
-MIT License
 
