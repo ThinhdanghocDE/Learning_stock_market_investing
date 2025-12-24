@@ -35,13 +35,15 @@ function TradingPage() {
   const [challengeBalance, setChallengeBalance] = useState(10000000) // Số dư trong challenge (tách riêng)
   const [challengeTotalValue, setChallengeTotalValue] = useState(10000000) // Tổng giá trị trong challenge
   const [challengePositions, setChallengePositions] = useState([]) // Vị thế trong challenge (số lượng đã mua)
+  const [pendingOrders, setPendingOrders] = useState([]) // Lệnh đang chờ (ATO/ATC)
   
   // Order form state
   const [orderSide, setOrderSide] = useState('BUY')
-  const [orderType, setOrderType] = useState('MARKET')
+  const [orderType, setOrderType] = useState('LIMIT') // 'LIMIT', 'MTL', 'ATO', 'ATC'
   const [orderQuantity, setOrderQuantity] = useState('')
   const [orderPrice, setOrderPrice] = useState('')
   const [orderSubmitting, setOrderSubmitting] = useState(false)
+  const [accountType, setAccountType] = useState('cash') // 'cash', 'margin'
   const [portfolio, setPortfolio] = useState(null)
   const [positions, setPositions] = useState([])
   
@@ -64,6 +66,20 @@ function TradingPage() {
     setModalMessage(message)
     setModalType(type)
     setModalOpen(true)
+  }
+
+  // Hàm kiểm tra phiên giao dịch hiện tại
+  const getCurrentSession = () => {
+    const now = new Date()
+    // Lấy giờ local (giả sử máy client đang ở múi giờ VN hoặc đã set đúng)
+    const hours = now.getHours()
+    const minutes = now.getMinutes()
+    const time = hours * 100 + minutes // Ví dụ: 10:30 -> 1030
+
+    if (time >= 900 && time <= 915) return 'ATO_SESSION'
+    if (time > 915 && time < 1430) return 'CONTINUOUS_SESSION'
+    if (time >= 1430 && time <= 1445) return 'ATC_SESSION'
+    return 'OUT_OF_MARKET'
   }
   
   // Hàm xử lý khi chọn bước nhảy
@@ -208,33 +224,48 @@ function TradingPage() {
 
   // Fetch popular symbols (có nhiều nến)
   useEffect(() => {
-    const fetchPopularSymbols = async () => {
-      try {
-        const response = await api.get('/symbols/popular?limit=10&interval=1m&min_candles=100')
-        console.log('Popular symbols response:', response.data)
-        
-        if (response.data && response.data.symbols && Array.isArray(response.data.symbols)) {
-          const popularList = response.data.symbols.map(item => item.symbol)
-          setPopularSymbols(popularList)
-        }
-      } catch (error) {
-        console.error('Error fetching popular symbols:', error)
-        // Không set fallback, để trống nếu lỗi
-      }
-    }
-
-    fetchPopularSymbols()
+    // Sử dụng danh sách mã từ download_vnstock_intraday.py
+    const popularSymbolsList = [
+      'BSR', 'CEO', 'HPG', 'MBB', 'VPB', 'SHB', 'FPT', 'MSN', 'TCB', 'STB',
+      'CTG', 'VNM', 'ACB', 'DGC', 'DBC', 'VCB', 'HDB', 'DCM', 'BID', 'CII',
+      'EIB', 'BAF', 'GAS', 'LPB', 'CTD', 'CTS', 'AAA', 'ANV', 'CSV', 'DDV'
+    ]
+    setPopularSymbols(popularSymbolsList)
   }, [])
 
+
   useEffect(() => {
+    // Cleanup chart cũ trước khi tạo mới
+    if (chartRef.current) {
+      chartRef.current.remove()
+      chartRef.current = null
+    }
+    candlestickSeriesRef.current = null
+    volumeSeriesRef.current = null
+    vwapSeriesRef.current = null
+
     if (!chartContainerRef.current) return
 
     // Ensure container has dimensions
     const container = chartContainerRef.current
     if (container.clientWidth === 0 || container.clientHeight === 0) {
-      console.warn('Chart container has no dimensions')
-      return
+      console.warn('Chart container has no dimensions, retrying...')
+      const timeout = setTimeout(() => {
+        if (chartContainerRef.current && chartContainerRef.current.clientWidth > 0) {
+          // Retry initialization
+          const retryContainer = chartContainerRef.current
+          initializeChart(retryContainer)
+        }
+      }, 100)
+      return () => clearTimeout(timeout)
     }
+
+    initializeChart(container)
+  }, [symbol, challengeActive])
+
+  // Tách hàm khởi tạo chart ra riêng
+  const initializeChart = useCallback((container) => {
+    if (!container) return
 
     // Initialize chart với dark theme
     const chart = createChart(container, {
@@ -351,16 +382,22 @@ function TradingPage() {
     }
 
     window.addEventListener('resize', handleResize)
+  }, [])
 
+  // Cleanup effect riêng cho resize handler
+  useEffect(() => {
+    const handleResize = () => {
+      if (chartContainerRef.current && chartRef.current) {
+        chartRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight || 500,
+        })
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
     return () => {
       window.removeEventListener('resize', handleResize)
-      if (chartRef.current) {
-        chartRef.current.remove()
-        chartRef.current = null
-      }
-      candlestickSeriesRef.current = null
-      volumeSeriesRef.current = null
-      vwapSeriesRef.current = null
     }
   }, [])
 
@@ -377,17 +414,13 @@ function TradingPage() {
       const currentPrice = parseFloat(lastCandle.close)
       
       // Tính tổng giá trị positions (mỗi position có thể là symbol khác nhau)
+      // Lưu ý: currentPrice là nghìn VNĐ, challengeBalance là VNĐ, cần nhân 1000 khi tính positionsValue
       let positionsValue = 0
       challengePositions.forEach(pos => {
         // Nếu position là symbol hiện tại, dùng giá hiện tại
-        // Nếu không, cần fetch giá cho symbol đó (tạm thời dùng giá hiện tại nếu cùng symbol)
-        if (pos.symbol === symbol) {
-          positionsValue += pos.quantity * currentPrice
-        } else {
-          // Nếu position là symbol khác, tạm thời dùng giá trung bình đã mua
-          // (có thể cải thiện sau bằng cách fetch giá cho từng symbol)
-          positionsValue += pos.quantity * (pos.avg_price || currentPrice)
-        }
+        // Nếu không, tạm thời dùng giá trung bình đã mua (có thể cải thiện sau bằng cách fetch giá cho từng symbol)
+        const price = pos.symbol === symbol ? currentPrice : (pos.avg_price || currentPrice)
+        positionsValue += pos.quantity * price * 1000 // Nhân 1000 để đổi từ nghìn VNĐ sang VNĐ
       })
       
       // Total value = cash balance + positions value
@@ -503,13 +536,11 @@ function TradingPage() {
       const lastCandle = sorted[sorted.length - 1]
       if (lastCandle && lastCandle.close) {
         const currentPrice = parseFloat(lastCandle.close)
+        // Lưu ý: currentPrice là nghìn VNĐ, challengeBalance là VNĐ, cần nhân 1000
         let positionsValue = 0
         challengePositions.forEach(pos => {
-          if (pos.symbol === symbol) {
-            positionsValue += pos.quantity * currentPrice
-          } else {
-            positionsValue += pos.quantity * (pos.avg_price || currentPrice)
-          }
+          const price = pos.symbol === symbol ? currentPrice : (pos.avg_price || currentPrice)
+          positionsValue += pos.quantity * price * 1000 // Nhân 1000 để đổi từ nghìn VNĐ sang VNĐ
         })
         const newTotalValue = challengeBalance + positionsValue
         setChallengeTotalValue(newTotalValue)
@@ -542,22 +573,17 @@ function TradingPage() {
 
   // Update hoặc append candle mới
   const updateOrAppendCandle = useCallback((newCandle) => {
-    // 1. Kiểm tra mode: Nếu đang xem quá khứ/challenge thì không nhận update từ socket
-    if (startDate || endDate || challengeActive) {
-      return
-    }
+    // 1. Chặn cập nhật nếu đang trong Challenge hoặc History
+    if (startDate || endDate || challengeActive) return
+    if (!candlestickSeriesRef.current) return
 
-    if (!candlestickSeriesRef.current || !volumeSeriesRef.current) return
-
-    // 2. Normalize time (giữ nguyên logic cộng 7h để đồng bộ với chart)
+    // 2. Normalize Time
     const normalizeTime = (time) => {
       if (typeof time === 'string') {
         const hasTimezone = time.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(time)
         if (!hasTimezone) {
           const dtVN = new Date(time + '+07:00')
-          const utcTimestamp = dtVN.getTime()
-          const vnHanoiOffset = 7 * 60 * 60 * 1000
-          return (utcTimestamp + vnHanoiOffset) / 1000 // Trả về giây
+          return (dtVN.getTime() + 7 * 3600000) / 1000
         }
         return Math.floor(new Date(time).getTime() / 1000)
       }
@@ -565,10 +591,19 @@ function TradingPage() {
     }
 
     const timestamp = normalizeTime(newCandle.time)
+    const lastBar = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
 
-    // 3. CHỈ CẬP NHẬT (UPDATE) THAY VÌ SETDATA
-    // Lệnh này sẽ tự động biết nến này là nến mới hay cập nhật nến cũ dựa trên timestamp
-    const candleToUpdate = {
+    // 3. BỘ LỌC RÁC (Chặn giá ảo làm nén chart)
+    if (lastBar) {
+      const priceChange = Math.abs(newCandle.close - lastBar.close) / lastBar.close
+      if (priceChange > 0.10) { // Nếu lệch > 10% trong 1 phút -> Bỏ qua
+        console.warn("Chặn nến ảo:", newCandle.close, "Giá cũ:", lastBar.close, "Lệch:", (priceChange * 100).toFixed(2) + "%")
+        return
+      }
+    }
+
+    // 4. CẬP NHẬT TRỰC TIẾP (Không dùng setData)
+    const candleData = {
       time: timestamp,
       open: parseFloat(newCandle.open),
       high: parseFloat(newCandle.high),
@@ -576,27 +611,21 @@ function TradingPage() {
       close: parseFloat(newCandle.close),
     }
 
-    const volumeToUpdate = {
-      time: timestamp,
-      value: parseFloat(newCandle.volume || 0),
-      color: (parseFloat(newCandle.close) >= parseFloat(newCandle.open)) 
-              ? 'rgba(38, 166, 154, 0.5)' 
-              : 'rgba(239, 83, 80, 0.5)',
-    }
-
-    // Cập nhật nến và khối lượng (Không gây reset zoom)
-    candlestickSeriesRef.current.update(candleToUpdate)
-    volumeSeriesRef.current.update(volumeToUpdate)
-
-    // Cập nhật VWAP nếu có
-    if (vwapSeriesRef.current && newCandle.vwap) {
-      vwapSeriesRef.current.update({
+    candlestickSeriesRef.current.update(candleData)
+    
+    if (volumeSeriesRef.current) {
+      volumeSeriesRef.current.update({
         time: timestamp,
-        value: parseFloat(newCandle.vwap)
+        value: parseFloat(newCandle.volume || 0),
+        color: candleData.close >= candleData.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
       })
     }
 
-    // 4. Vẫn cập nhật Ref lịch sử để khi hover chuột (Legend) vẫn có dữ liệu mới nhất
+    if (vwapSeriesRef.current && newCandle.vwap) {
+      vwapSeriesRef.current.update({ time: timestamp, value: parseFloat(newCandle.vwap) })
+    }
+
+    // Cập nhật Ref lịch sử để khi hover chuột (Legend) vẫn có dữ liệu mới nhất
     const index = historicalCandlesRef.current.findIndex(c => {
       const cTime = normalizeTime(c.time)
       return Math.abs(cTime - timestamp) < 60 // 1 phút
@@ -609,13 +638,13 @@ function TradingPage() {
       if (historicalCandlesRef.current.length > 1000) historicalCandlesRef.current.shift()
     }
 
-    // Cập nhật Legend data cho nến hiện tại đang nhảy
+    // Cập nhật legend cho mượt
     setLegendData({
-      open: candleToUpdate.open.toFixed(2),
-      high: candleToUpdate.high.toFixed(2),
-      low: candleToUpdate.low.toFixed(2),
-      close: candleToUpdate.close.toFixed(2),
-      volume: volumeToUpdate.value.toLocaleString(),
+      open: candleData.open.toFixed(2),
+      high: candleData.high.toFixed(2),
+      low: candleData.low.toFixed(2),
+      close: candleData.close.toFixed(2),
+      volume: (newCandle.volume || 0).toLocaleString(),
     })
   }, [startDate, endDate, challengeActive])
 
@@ -627,7 +656,13 @@ function TradingPage() {
     }
 
     setLoading(true)
-    historicalCandlesRef.current = []
+    // 1. XÓA DỮ LIỆU TRÊN BIỂU ĐỒ 
+    candlestickSeriesRef.current.setData([]);
+    volumeSeriesRef.current.setData([]);
+    vwapSeriesRef.current.setData([]);
+
+    // 2. Xóa dữ liệu trong Ref
+    historicalCandlesRef.current = [];
 
     try {
       console.log('Fetching historical data for:', symbol, { startDate, endDate, challengeActive })
@@ -710,13 +745,11 @@ function TradingPage() {
           const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
           if (lastCandle && lastCandle.close) {
             const currentPrice = parseFloat(lastCandle.close)
+            // Lưu ý: currentPrice là nghìn VNĐ, challengeBalance là VNĐ, cần nhân 1000
             let positionsValue = 0
             challengePositions.forEach(pos => {
-              if (pos.symbol === symbol) {
-                positionsValue += pos.quantity * currentPrice
-              } else {
-                positionsValue += pos.quantity * (pos.avg_price || currentPrice)
-              }
+              const price = pos.symbol === symbol ? currentPrice : (pos.avg_price || currentPrice)
+              positionsValue += pos.quantity * price * 1000 // Nhân 1000 để đổi từ nghìn VNĐ sang VNĐ
             })
             const newTotalValue = challengeBalance + positionsValue
             setChallengeTotalValue(newTotalValue)
@@ -733,21 +766,30 @@ function TradingPage() {
 
   // Fetch data khi symbol thay đổi hoặc khi không có date filter (real-time mode)
   useEffect(() => {
-    // Nếu đang expand chart (từ expandChartOnOrder), không fetch lại
-    // KHÔNG reset flag ở đây, để flag được reset sau khi fetch xong trong expandChartOnOrder
-    if (isExpandingChartRef.current) {
-      return
-    }
+    // Chờ chart được khởi tạo - sử dụng timeout để đảm bảo chart đã sẵn sàng
+    const timer = setTimeout(() => {
+      if (!candlestickSeriesRef.current) {
+        return
+      }
+      
+      // Nếu đang expand chart (từ expandChartOnOrder), không fetch lại
+      // KHÔNG reset flag ở đây, để flag được reset sau khi fetch xong trong expandChartOnOrder
+      if (isExpandingChartRef.current) {
+        return
+      }
+      
+      // Nếu có date filter và không phải challenge mode, không auto-fetch
+      // User phải click nút "Tìm kiếm"
+      if ((startDate || endDate) && !challengeActive) {
+        return
+      }
+      
+      fetchChartData()
+    }, 200) // Delay để đảm bảo chart đã được khởi tạo
     
-    // Nếu có date filter và không phải challenge mode, không auto-fetch
-    // User phải click nút "Tìm kiếm"
-    if ((startDate || endDate) && !challengeActive) {
-      return
-    }
-    
-    fetchChartData()
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, challengeActive]) // Loại bỏ fetchChartData khỏi dependencies để tránh trigger lại
+  }, [symbol, challengeActive]) // Loại bỏ candlestickSeriesRef khỏi dependencies
 
   // WebSocket connection - chỉ hoạt động trong LIVE mode (không có date filter)
   useEffect(() => {
@@ -770,16 +812,22 @@ function TradingPage() {
         const unsubscribe = wsClient.subscribe((message) => {
           if (message.type === 'ohlc_update') {
             const candle = message.data
-            console.log('Received OHLC update:', candle.time, candle.close)
-            updateOrAppendCandle({
-              time: candle.time,
-              open: parseFloat(candle.open),
-              high: parseFloat(candle.high),
-              low: parseFloat(candle.low),
-              close: parseFloat(candle.close),
-              volume: parseFloat(candle.volume) || 0,
-              vwap: parseFloat(candle.vwap) || 0,
-            })
+            
+            // CHỐT CHẶN: Chỉ update nếu message trả về đúng symbol đang xem
+            if (message.symbol === symbol) {
+              console.log('Received OHLC update:', candle.time, candle.close)
+              updateOrAppendCandle({
+                time: candle.time,
+                open: parseFloat(candle.open),
+                high: parseFloat(candle.high),
+                low: parseFloat(candle.low),
+                close: parseFloat(candle.close),
+                volume: parseFloat(candle.volume) || 0,
+                vwap: parseFloat(candle.vwap) || 0,
+              })
+            } else {
+              console.log('Ignoring OHLC update for different symbol:', message.symbol, 'Current:', symbol)
+            }
           }
         })
 
@@ -859,8 +907,13 @@ function TradingPage() {
           if (priceResponse.data.data && priceResponse.data.data.length > 0) {
             const lastPrice = parseFloat(priceResponse.data.data[priceResponse.data.data.length - 1].close)
             // Tính tổng giá trị positions
+            // Lưu ý: lastPrice là nghìn VNĐ (từ ClickHouse), challengeBalance là VNĐ, cần nhân 1000
             const positionsValue = challengePositions.reduce((total, pos) => {
-              const posValue = pos.quantity * lastPrice
+              // Nếu position là symbol hiện tại, dùng lastPrice (giá tại thời điểm kết thúc)
+              // Nếu là symbol khác, dùng avg_price (giá trung bình đã mua)
+              // TODO: Có thể cải thiện bằng cách fetch giá cho từng symbol riêng
+              const price = pos.symbol === symbol ? lastPrice : (pos.avg_price || lastPrice)
+              const posValue = pos.quantity * price * 1000 // Nhân 1000 để đổi từ nghìn VNĐ sang VNĐ
               return total + posValue
             }, 0)
             // Total value = cash balance + positions value
@@ -918,14 +971,22 @@ function TradingPage() {
   }
 
   // Hàm đặt lệnh
-  const handleSubmitOrder = async () => {
-    if (!orderQuantity || (orderType === 'LIMIT' && !orderPrice)) {
-      showModal('Thông báo', 'Vui lòng điền đầy đủ thông tin', 'warning')
+  const handleSubmitOrder = async (sideOverride = null) => {
+    // Sử dụng sideOverride nếu có, nếu không thì dùng orderSide hiện tại
+    const currentSide = sideOverride || orderSide
+    
+    if (!orderQuantity || parseInt(orderQuantity) === 0) {
+      showModal('Thông báo', 'Vui lòng nhập số lượng', 'warning')
+      return
+    }
+    
+    if ((orderType === 'LIMIT' || orderType === 'MTL') && !orderPrice) {
+      showModal('Thông báo', 'Vui lòng nhập giá', 'warning')
       return
     }
 
     // Kiểm tra số dư trước khi đặt lệnh MUA
-    if (orderSide === 'BUY') {
+    if (currentSide === 'BUY') {
       // Sử dụng challenge balance nếu đang trong challenge, ngược lại dùng portfolio balance
       const availableBalance = challengeActive ? challengeBalance : (portfolio ? parseFloat(portfolio.cash_balance || 0) : 0)
       const quantity = parseInt(orderQuantity)
@@ -941,10 +1002,19 @@ function TradingPage() {
           showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
           return
         }
-      } else {
-        // Với LIMIT order, dùng giá đã nhập
+      } else if (orderType === 'LIMIT' || orderType === 'MTL') {
+        // Với LIMIT/MTL order, dùng giá đã nhập
         // Giá từ ClickHouse là nghìn VNĐ, cần nhân 1000 khi tính tiền
         requiredAmount = parseFloat(orderPrice) * quantity * 1000
+      } else {
+        // ATO, ATC - lấy giá từ candle cuối cùng
+        const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+        if (lastCandle && lastCandle.close) {
+          requiredAmount = parseFloat(lastCandle.close) * quantity * 1000
+        } else {
+          showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
+          return
+        }
       }
       
       if (requiredAmount > availableBalance) {
@@ -952,34 +1022,158 @@ function TradingPage() {
         showModal('Số dư không đủ', insufficientMessage, 'error')
         return
       }
+    } else if (currentSide === 'SELL') {
+      // Kiểm tra số lượng khi BÁN
+      const quantity = parseInt(orderQuantity)
+      const existing = challengeActive 
+        ? challengePositions.find(p => p.symbol === symbol)
+        : positions.find(p => p.symbol === symbol)
+      
+      if (!existing || existing.quantity < quantity) {
+        showModal('Lỗi', 'Số lượng chứng khoán không đủ để bán', 'error')
+        return
+      }
+    }
+
+    // Kiểm tra phiên giao dịch
+    const session = getCurrentSession()
+    
+    if (orderType === 'ATO' && session !== 'ATO_SESSION') {
+      showModal('Lỗi', 'Lệnh ATO chỉ dùng được trong phiên mở cửa (09:00-09:15)', 'error')
+      setOrderSubmitting(false)
+      return
+    }
+    
+    if (orderType === 'ATC' && session === 'CONTINUOUS_SESSION') {
+      // Cho phép đặt nhưng báo là nến sẽ không nhảy ngay
+      // Logic: Đẩy lệnh vào mảng "PendingOrders", không trừ tiền/khớp nến ngay
+      const pendingOrder = {
+        symbol,
+        side: currentSide,
+        orderType: 'ATC',
+        quantity: parseInt(orderQuantity),
+        createdAt: new Date().toISOString()
+      }
+      setPendingOrders(prev => [...prev, pendingOrder])
+      showModal('Thông báo', 'Lệnh ATC đã được ghi nhận và sẽ chờ khớp sau 14:30', 'info')
+      setOrderQuantity('')
+      setOrderPrice('')
+      setOrderSubmitting(false)
+      return
     }
 
     setOrderSubmitting(true)
     try {
       // CHALLENGE MODE: Xử lý local, không gọi API
       if (challengeActive) {
-        // Lấy giá từ candle cuối cùng trên chart
-        const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-        if (!lastCandle || !lastCandle.close) {
+        // QUAN TRỌNG: Lấy giá tại thời điểm hiện tại của challenge (challengeCurrentDate + endTime)
+        // Không dùng candle cuối cùng vì có thể không đúng thời điểm
+        let fillPrice = null
+        
+        if (orderType === 'LIMIT' && orderPrice) {
+          // Với LIMIT order, dùng giá đã nhập (đã là nghìn VNĐ)
+          fillPrice = parseFloat(orderPrice)
+        } else if (orderType === 'MTL') {
+          // MTL: Giai đoạn 1 - Khớp ngay với giá bán thấp nhất (cho lệnh mua) hoặc giá mua cao nhất (cho lệnh bán)
+          // Trong challenge mode, dùng giá close của candle hiện tại (giả sử là giá thị trường)
+          if (challengeCurrentDate && endTime) {
+            const targetDateTime = `${challengeCurrentDate}T${endTime}:00`
+            const normalizeTime = (time) => {
+              if (typeof time === 'string') {
+                const hasTimezone = time.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(time)
+                if (!hasTimezone) {
+                  const dtVN = new Date(time + '+07:00')
+                  return dtVN.getTime()
+                }
+                return new Date(time).getTime()
+              } else if (typeof time === 'number') {
+                return time > 1e12 ? time : time * 1000
+              }
+              return 0
+            }
+            const targetTime = normalizeTime(targetDateTime)
+            let closestCandle = null
+            let minDiff = Infinity
+            const maxDiff = 5 * 60 * 1000
+            historicalCandlesRef.current.forEach(candle => {
+              const candleTime = normalizeTime(candle.time)
+              if (candleTime === 0) return
+              const diff = Math.abs(candleTime - targetTime)
+              if (diff < maxDiff && diff < minDiff) {
+                minDiff = diff
+                closestCandle = candle
+              }
+            })
+            if (closestCandle && closestCandle.close) {
+              fillPrice = parseFloat(closestCandle.close)
+            } else {
+              const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+              if (lastCandle && lastCandle.close) {
+                fillPrice = parseFloat(lastCandle.close)
+              }
+            }
+          } else {
+            const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+            if (lastCandle && lastCandle.close) {
+              fillPrice = parseFloat(lastCandle.close)
+            }
+          }
+        } else {
+          // Với MARKET order, lấy giá tại thời điểm hiện tại của challenge
+          // Sử dụng hàm getPriceAtSimulatedTime để lấy giá đúng theo thời gian
+          const getPriceAtSimulatedTime = () => {
+            if (historicalCandlesRef.current.length === 0) return null
+            
+            // Sắp xếp mảng để đảm bảo nến cuối là nến mới nhất theo thời gian
+            const sorted = [...historicalCandlesRef.current].sort((a, b) => {
+              const timeA = typeof a.time === 'string' ? new Date(a.time).getTime() : (a.time > 1e12 ? a.time : a.time * 1000)
+              const timeB = typeof b.time === 'string' ? new Date(b.time).getTime() : (b.time > 1e12 ? b.time : b.time * 1000)
+              return timeA - timeB
+            })
+            const latest = sorted[sorted.length - 1]
+            return latest ? parseFloat(latest.close) : null
+          }
+          
+          fillPrice = getPriceAtSimulatedTime()
+          
+          if (!fillPrice) {
+            console.warn('Cannot get price at simulated time, using fallback')
+          }
+        }
+        
+        if (!fillPrice || isNaN(fillPrice) || fillPrice <= 0) {
           showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
           setOrderSubmitting(false)
           return
         }
         
-        const fillPrice = parseFloat(lastCandle.close)
-        const fillQuantity = parseInt(orderQuantity)
+        const totalQuantity = parseInt(orderQuantity)
+        const orderSymbol = symbol
+        
+        // Xử lý MTL order: Giai đoạn 1 khớp ngay, Giai đoạn 2 chuyển thành LO
+        let immediateFillQuantity = totalQuantity
+        let limitOrderQuantity = 0
+        
+        if (orderType === 'MTL') {
+          // Giả lập: một phần khớp ngay (60-80% ngẫu nhiên), phần còn lại chuyển thành LO
+          const fillRatio = 0.6 + Math.random() * 0.2 // 60-80%
+          immediateFillQuantity = Math.floor(totalQuantity * fillRatio)
+          limitOrderQuantity = totalQuantity - immediateFillQuantity
+        }
+        
+        // Tính toán với phần khớp ngay
+        const fillQuantity = immediateFillQuantity
         // Giá từ ClickHouse là nghìn VNĐ
         // totalCost cho tính toán avg_price (không nhân 1000, vì avg_price lưu ở đơn vị nghìn VNĐ)
         const totalCostForAvgPrice = fillPrice * fillQuantity
         // totalCost cho trừ tiền (nhân 1000, vì balance lưu ở đơn vị VNĐ)
         const totalCostForBalance = fillPrice * fillQuantity * 1000
-        const orderSymbol = symbol
         
         // Tính toán positions mới
         let updatedPositions = [...challengePositions]
         let newBalance = challengeBalance
         
-        if (orderSide === 'BUY') {
+        if (currentSide === 'BUY') {
           // Trừ tiền khi mua (dùng totalCostForBalance)
           newBalance = challengeBalance - totalCostForBalance
           
@@ -1000,26 +1194,40 @@ function TradingPage() {
             // Thêm position mới
             updatedPositions = [...updatedPositions, { symbol: orderSymbol, quantity: fillQuantity, avg_price: fillPrice }]
           }
-        } else {
+        } else if (currentSide === 'SELL') {
+          // SELL: Kiểm tra số lượng trước
+          const existing = updatedPositions.find(p => p.symbol === orderSymbol)
+          if (!existing) {
+            showModal('Lỗi', 'Bạn chưa có cổ phiếu này để bán', 'error')
+            setOrderSubmitting(false)
+            return
+          }
+          if (existing.quantity < fillQuantity) {
+            showModal('Lỗi', `Số lượng chứng khoán không đủ. Bạn có ${existing.quantity} cổ, cần ${fillQuantity} cổ`, 'error')
+            setOrderSubmitting(false)
+            return
+          }
+          
           // Cộng tiền khi bán (dùng totalCostForBalance)
           newBalance = challengeBalance + totalCostForBalance
           
           // Cập nhật positions: trừ số lượng
-          const existing = updatedPositions.find(p => p.symbol === orderSymbol)
-          if (existing) {
-            const newQuantity = existing.quantity - fillQuantity
-            if (newQuantity <= 0) {
-              // Xóa position nếu đã bán hết
-              updatedPositions = updatedPositions.filter(p => p.symbol !== orderSymbol)
-            } else {
-              // Giữ nguyên giá trung bình, chỉ giảm số lượng
-              updatedPositions = updatedPositions.map(p => 
-                p.symbol === orderSymbol 
-                  ? { ...p, quantity: newQuantity }
-                  : p
-              )
-            }
+          const newQuantity = existing.quantity - fillQuantity
+          if (newQuantity <= 0) {
+            // Xóa position nếu đã bán hết
+            updatedPositions = updatedPositions.filter(p => p.symbol !== orderSymbol)
+          } else {
+            // Giữ nguyên giá trung bình, chỉ giảm số lượng
+            updatedPositions = updatedPositions.map(p => 
+              p.symbol === orderSymbol 
+                ? { ...p, quantity: newQuantity }
+                : p
+            )
           }
+        } else {
+          showModal('Lỗi', 'Loại lệnh không hợp lệ', 'error')
+          setOrderSubmitting(false)
+          return
         }
         
         // Cập nhật state
@@ -1027,15 +1235,27 @@ function TradingPage() {
         setChallengePositions(updatedPositions)
         
         // Tính total value
+        // Lưu ý: fillPrice là nghìn VNĐ, newBalance là VNĐ, cần nhân 1000 khi tính positionsValue
         const positionsValue = updatedPositions.reduce((total, pos) => {
-          const posValue = pos.quantity * fillPrice
+          // Nếu position là symbol hiện tại, dùng fillPrice (giá vừa khớp)
+          // Nếu là symbol khác, dùng avg_price (giá trung bình đã mua)
+          const price = pos.symbol === orderSymbol ? fillPrice : (pos.avg_price || fillPrice)
+          const posValue = pos.quantity * price * 1000 // Nhân 1000 để đổi từ nghìn VNĐ sang VNĐ
           return total + posValue
         }, 0)
         const newTotalValue = newBalance + positionsValue
         setChallengeTotalValue(newTotalValue)
         
         // Hiển thị thông báo thành công
-        showModal('Đặt lệnh thành công', `Đã khớp: ${fillQuantity} @ ${fillPrice.toLocaleString('vi-VN')} VNĐ`, 'success')
+        // fillPrice là nghìn VNĐ, cần nhân 1000 để hiển thị đúng
+        const displayPrice = fillPrice * 1000
+        let successMessage = `Đã khớp: ${fillQuantity} @ ${displayPrice.toLocaleString('vi-VN')} VNĐ`
+        
+        if (orderType === 'MTL' && limitOrderQuantity > 0) {
+          successMessage += `\n${limitOrderQuantity} cổ còn lại đã chuyển thành lệnh LO @ ${displayPrice.toLocaleString('vi-VN')} VNĐ`
+        }
+        
+        showModal('Đặt lệnh thành công', successMessage, 'success')
         
         // Reset form
         setOrderQuantity('')
@@ -1051,7 +1271,7 @@ function TradingPage() {
       // REALTIME MODE: Gọi API
       const orderData = {
         symbol: symbol,
-        side: orderSide,
+        side: currentSide,
         order_type: orderType,
         quantity: parseInt(orderQuantity),
         trading_mode: 'REALTIME',
@@ -1255,23 +1475,36 @@ function TradingPage() {
           console.log('updateChart() completed')
           
           // Cập nhật challenge total value sau khi fetch data mới
+          // QUAN TRỌNG: Phải cập nhật với giá mới nhất từ candle cuối cùng
           if (challengePositions.length > 0) {
             setTimeout(() => {
               const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
               if (lastCandle && lastCandle.close) {
                 const currentPrice = parseFloat(lastCandle.close)
+                console.log('Updating challenge total value after expand:', {
+                  currentPrice,
+                  symbol,
+                  positions: challengePositions,
+                  balance: challengeBalance
+                })
+                // Lưu ý: currentPrice là nghìn VNĐ, challengeBalance là VNĐ, cần nhân 1000
                 let positionsValue = 0
                 challengePositions.forEach(pos => {
-                  if (pos.symbol === symbol) {
-                    positionsValue += pos.quantity * currentPrice
-                  } else {
-                    positionsValue += pos.quantity * (pos.avg_price || currentPrice)
-                  }
+                  const price = pos.symbol === symbol ? currentPrice : (pos.avg_price || currentPrice)
+                  positionsValue += pos.quantity * price * 1000 // Nhân 1000 để đổi từ nghìn VNĐ sang VNĐ
                 })
                 const newTotalValue = challengeBalance + positionsValue
+                console.log('New total value:', {
+                  balance: challengeBalance,
+                  positionsValue,
+                  newTotalValue,
+                  profit: newTotalValue - challengeCapital
+                })
                 setChallengeTotalValue(newTotalValue)
+              } else {
+                console.warn('Cannot update challenge total value: no last candle')
               }
-            }, 100)
+            }, 200) // Tăng timeout lên 200ms để đảm bảo chart đã update xong
           }
           
           setLoading(false)
@@ -1611,7 +1844,11 @@ function TradingPage() {
       </div>
 
       <div className="chart-and-panel-container">
-        <div className="chart-container" ref={chartContainerRef}>
+        <div 
+          className="chart-container" 
+          ref={chartContainerRef}
+          key={`${symbol}-${challengeActive}`}
+        >
           {loading && <div className="chart-loading">Đang tải dữ liệu...</div>}
           <div className="chart-legend">
             <div>
@@ -1626,87 +1863,207 @@ function TradingPage() {
         </div>
         
         <div className="trading-panel">
-        <h2>Đặt lệnh</h2>
-
         {/* Order Form */}
         <div className="order-form">
-          <div className="order-form-row">
-            <div className="order-form-group">
-              <label htmlFor="order-side">Loại lệnh:</label>
-              <select
-                id="order-side"
-                value={orderSide}
-                onChange={(e) => setOrderSide(e.target.value)}
-                className="order-select"
-              >
-                <option value="BUY">Mua</option>
-                <option value="SELL">Bán</option>
-              </select>
-            </div>
-            
-            <div className="order-form-group">
-              <label htmlFor="order-type">Kiểu lệnh:</label>
-              <select
-                id="order-type"
-                value={orderType}
-                onChange={(e) => {
-                  setOrderType(e.target.value)
-                  if (e.target.value === 'MARKET') {
-                    setOrderPrice('')
-                  }
-                }}
-                className="order-select"
-              >
-                <option value="MARKET">Thị trường (MARKET)</option>
-                <option value="LIMIT">Giới hạn (LIMIT)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="order-form-row">
-            <div className="order-form-group">
-              <label htmlFor="order-symbol">Mã CK:</label>
+          {/* Symbol Input */}
+          <div className="order-form-group">
+            <div className="symbol-input-wrapper">
               <input
-                id="order-symbol"
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                className="order-input"
+                className="order-input symbol-input"
                 placeholder="Nhập mã CK"
               />
-            </div>
-            
-            <div className="order-form-group">
-              <label htmlFor="order-quantity">Số lượng:</label>
-              <input
-                id="order-quantity"
-                type="number"
-                value={orderQuantity}
-                onChange={(e) => setOrderQuantity(e.target.value)}
-                className="order-input"
-                placeholder="Nhập số lượng"
-                min="1"
-              />
+              {symbol && (
+                <button
+                  className="clear-symbol-btn"
+                  onClick={() => setSymbol('')}
+                >
+                  ×
+                </button>
+              )}
             </div>
           </div>
 
-          {orderType === 'LIMIT' && (
-            <div className="order-form-row">
-              <div className="order-form-group">
-                <label htmlFor="order-price">Giá (VNĐ):</label>
+          {/* Buying Power - Số tiền khả dụng */}
+          <div className="buying-power-group">
+            <label>Sức mua:</label>
+            <div className="buying-power-input">
+              <span>{(challengeActive ? challengeBalance : (portfolio ? parseFloat(portfolio.cash_balance || 0) : 0)).toLocaleString('vi-VN')} VNĐ</span>
+              <button 
+                className="btn-plus" 
+                onClick={() => {
+                  // Tính và set số lượng tối đa có thể mua dựa trên số tiền
+                  if (orderSide === 'BUY') {
+                    const availableBalance = challengeActive ? challengeBalance : (portfolio ? parseFloat(portfolio.cash_balance || 0) : 0)
+                    let price = 0
+                    
+                    if (orderType === 'LIMIT' || orderType === 'MTL') {
+                      price = parseFloat(orderPrice) || 0
+                    } else {
+                      const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                      if (lastCandle && lastCandle.close) {
+                        price = parseFloat(lastCandle.close)
+                      }
+                    }
+                    
+                    if (price > 0) {
+                      const maxQty = Math.floor(availableBalance / (price * 1000))
+                      setOrderQuantity(maxQty.toString())
+                    }
+                  }
+                }}
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {/* Order Type Buttons */}
+          <div className="order-type-buttons">
+            <button
+              className={`order-type-btn ${orderType === 'LIMIT' ? 'active' : ''}`}
+              onClick={() => {
+                setOrderType('LIMIT')
+                if (!orderPrice && historicalCandlesRef.current.length > 0) {
+                  const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                  if (lastCandle && lastCandle.close) {
+                    setOrderPrice(parseFloat(lastCandle.close).toString())
+                  }
+                }
+              }}
+            >
+              LO
+            </button>
+            <button
+              className={`order-type-btn ${orderType === 'MTL' ? 'active' : ''}`}
+              onClick={() => {
+                setOrderType('MTL')
+                setOrderPrice('')
+              }}
+            >
+              MTL
+            </button>
+            {(() => {
+              const session = getCurrentSession()
+              const showATO = session === 'ATO_SESSION' || session === 'OUT_OF_MARKET'
+              return showATO ? (
+                <button
+                  className={`order-type-btn ${orderType === 'ATO' ? 'active' : ''}`}
+                  onClick={() => {
+                    setOrderType('ATO')
+                    setOrderPrice('')
+                  }}
+                >
+                  ATO
+                </button>
+              ) : null
+            })()}
+            <button
+              className={`order-type-btn ${orderType === 'ATC' ? 'active' : ''}`}
+              onClick={() => {
+                setOrderType('ATC')
+                setOrderPrice('')
+                const session = getCurrentSession()
+                if (session === 'CONTINUOUS_SESSION') {
+                  showModal('Thông báo', 'Lệnh ATC sẽ được treo và chỉ khớp sau 14:45 dựa trên giá đóng cửa', 'info')
+                }
+              }}
+            >
+              ATC
+            </button>
+          </div>
+
+          {/* Price Input */}
+          {(orderType === 'LIMIT' || orderType === 'MTL') && (
+            <div className="order-form-group">
+              <label htmlFor="order-price">Giá đặt</label>
+              <div className="price-input-wrapper">
                 <input
                   id="order-price"
                   type="number"
                   value={orderPrice}
                   onChange={(e) => setOrderPrice(e.target.value)}
-                  className="order-input"
+                  className="order-input price-input"
                   placeholder="Nhập giá"
                   min="0"
                   step="0.01"
                 />
+                <button
+                  className="btn-match"
+                  onClick={() => {
+                    // Lấy giá khớp từ candle cuối cùng
+                    const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                    if (lastCandle && lastCandle.close) {
+                      setOrderPrice(parseFloat(lastCandle.close).toString())
+                    }
+                  }}
+                >
+                  Khớp
+                </button>
+                <button
+                  className="btn-adjust"
+                  onClick={() => {
+                    const currentPrice = parseFloat(orderPrice) || 0
+                    const step = currentPrice >= 1000 ? 100 : (currentPrice >= 100 ? 10 : 1)
+                    setOrderPrice((currentPrice - step).toString())
+                  }}
+                >
+                  −
+                </button>
+                <button
+                  className="btn-adjust"
+                  onClick={() => {
+                    const currentPrice = parseFloat(orderPrice) || 0
+                    const step = currentPrice >= 1000 ? 100 : (currentPrice >= 100 ? 10 : 1)
+                    setOrderPrice((currentPrice + step).toString())
+                  }}
+                >
+                  +
+                </button>
               </div>
             </div>
           )}
+
+          {/* Quantity Input */}
+          <div className="order-form-group">
+            <label htmlFor="order-quantity">KL đặt</label>
+            <div className="quantity-input-wrapper">
+              <input
+                id="order-quantity"
+                type="number"
+                value={orderQuantity}
+                onChange={(e) => setOrderQuantity(e.target.value)}
+                className="order-input quantity-input"
+                placeholder="Nhập số lượng"
+                min="0"
+              />
+              {orderQuantity && parseInt(orderQuantity) === 0 && (
+                <span className="error-message">KL không hợp lệ</span>
+              )}
+              <button
+                className="btn-adjust"
+                onClick={() => {
+                  const currentQty = parseInt(orderQuantity) || 0
+                  if (currentQty > 0) {
+                    setOrderQuantity((currentQty - 1).toString())
+                  }
+                }}
+              >
+                −
+              </button>
+              <button
+                className="btn-adjust"
+                onClick={() => {
+                  const currentQty = parseInt(orderQuantity) || 0
+                  setOrderQuantity((currentQty + 1).toString())
+                }}
+              >
+                +
+              </button>
+            </div>
+          </div>
 
           {/* Chỉ hiển thị chế độ khi không có challenge (challenge tự động dùng PRACTICE mode) */}
           {!challengeActive && (
@@ -1760,14 +2117,90 @@ function TradingPage() {
               )
             }
             
+            // Tính giá trị lệnh
+            const calculateOrderValue = () => {
+              if (!orderQuantity || parseInt(orderQuantity) === 0) return 0
+              const qty = parseInt(orderQuantity)
+              let price = 0
+              
+              if (orderType === 'LIMIT' || orderType === 'MTL') {
+                price = parseFloat(orderPrice) || 0
+              } else {
+                // MARKET, ATO, ATC - lấy giá từ candle cuối cùng
+                const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                if (lastCandle && lastCandle.close) {
+                  price = parseFloat(lastCandle.close)
+                }
+              }
+              
+              // Giá từ ClickHouse là nghìn VNĐ, cần nhân 1000
+              return price * qty * 1000
+            }
+            
+            const orderValue = calculateOrderValue()
+            
+            // Tính số lượng tối đa có thể mua/bán
+            const calculateMaxQuantity = () => {
+              if (orderSide === 'BUY') {
+                const availableBalance = challengeActive ? challengeBalance : (portfolio ? parseFloat(portfolio.cash_balance || 0) : 0)
+                let price = 0
+                
+                if (orderType === 'LIMIT' || orderType === 'MTL') {
+                  price = parseFloat(orderPrice) || 0
+                } else {
+                  const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                  if (lastCandle && lastCandle.close) {
+                    price = parseFloat(lastCandle.close)
+                  }
+                }
+                
+                if (price === 0) return 0
+                // Giá là nghìn VNĐ, balance là VNĐ
+                return Math.floor(availableBalance / (price * 1000))
+              } else {
+                // SELL - lấy từ positions
+                const existing = challengeActive 
+                  ? challengePositions.find(p => p.symbol === symbol)
+                  : positions.find(p => p.symbol === symbol)
+                return existing ? existing.quantity : 0
+              }
+            }
+            
+            const maxQuantity = calculateMaxQuantity()
+            
             return (
-              <button
-                onClick={handleSubmitOrder}
-                disabled={orderSubmitting || !orderQuantity || (orderType === 'LIMIT' && !orderPrice)}
-                className="submit-order-btn"
-              >
-                {orderSubmitting ? 'Đang xử lý...' : orderSide === 'BUY' ? 'Đặt lệnh Mua' : 'Đặt lệnh Bán'}
-              </button>
+              <>
+                <div className="order-action-buttons">
+                  <button
+                    className={`order-action-btn buy-btn ${orderSide === 'BUY' ? 'active' : ''}`}
+                    onClick={() => {
+                      setOrderSide('BUY')
+                      // Gọi handleSubmitOrder với side = 'BUY' để đảm bảo đúng
+                      handleSubmitOrder('BUY')
+                    }}
+                    disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0 || ((orderType === 'LIMIT' || orderType === 'MTL') && !orderPrice)}
+                  >
+                    MUA
+                    <span className="order-value">Giá trị: {orderValue > 0 ? orderValue.toLocaleString('vi-VN') : '-'}</span>
+                  </button>
+                  <button
+                    className={`order-action-btn sell-btn ${orderSide === 'SELL' ? 'active' : ''}`}
+                    onClick={() => {
+                      setOrderSide('SELL')
+                      // Gọi handleSubmitOrder với side = 'SELL' để đảm bảo đúng
+                      handleSubmitOrder('SELL')
+                    }}
+                    disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0 || ((orderType === 'LIMIT' || orderType === 'MTL') && !orderPrice)}
+                  >
+                    BÁN
+                    <span className="order-value">Giá trị: {orderValue > 0 ? orderValue.toLocaleString('vi-VN') : '-'}</span>
+                  </button>
+                </div>
+                <div className="max-quantity-info">
+                  <span>Mua tối đa: {maxQuantity > 0 ? maxQuantity : 'q'}</span>
+                  <span>Bán tối đa: {orderSide === 'SELL' ? maxQuantity : 0}</span>
+                </div>
+              </>
             )
           })()}
         </div>
