@@ -27,7 +27,18 @@ async def unregister_client(websocket):
     if websocket in connected_clients:
         del connected_clients[websocket]
     print(f"❌ Client disconnected. Total: {len(connected_clients)}")
+def is_valid_candle(candle, last_close):
+    if last_close == 0: return True
+    
+    # Nếu giá biến động > 20% trong 1 phút, khả năng cao là dữ liệu nhiễu
+    change = abs(candle['close'] - last_close) / last_close
+    if change > 0.20:
+        print(f"⚠️ Phát hiện dữ liệu nhiễu cho {candle['symbol']}: {candle['close']} (lệch {change*100:.2f}%)")
+        return False
+    return True
 
+# Lưu trữ giá đóng cửa gần nhất của các mã để so sánh
+last_prices = {}
 async def send_historical_data(websocket, symbol, limit=2000):
     try:
         # Lấy 60 nến mới nhất dựa trên ORDER BY và LIMIT
@@ -105,10 +116,8 @@ async def handle_client(websocket):
         await unregister_client(websocket)
 
 async def monitor_ohlc_updates():
-    """Poll ClickHouse mỗi giây và chỉ gửi dữ liệu các mã đã được subscribe"""
     while True:
         try:
-            # 1. Lấy danh sách tất cả các mã đang được subscribe từ các client
             all_subscribed_symbols = set()
             for subs in connected_clients.values():
                 all_subscribed_symbols.update(subs)
@@ -117,9 +126,7 @@ async def monitor_ohlc_updates():
                 await asyncio.sleep(1)
                 continue
 
-            # 2. Query ClickHouse CHỈ cho các mã này
-            # Lưu ý: Thêm điều kiện symbol IN ...
-            query = query = """
+            query = """
             SELECT 
                 symbol, time, argMinMerge(open), maxMerge(high), 
                 minMerge(low), argMaxMerge(close), sumMerge(volume), 
@@ -127,18 +134,27 @@ async def monitor_ohlc_updates():
             FROM stock_db.ohlc
             WHERE interval = '1m' 
             AND symbol IN %(symbols)s
-            AND time > now() - INTERVAL 5 MINUTE -- Chỉ lấy trong 5 phút cuối để test
+            AND time >= now() - INTERVAL 2 MINUTE 
             GROUP BY symbol, time 
             ORDER BY time DESC 
             LIMIT 1
             """
             
-            # Thực hiện query với tham số symbols
             rows = CH_CLIENT.execute(query, {'symbols': list(all_subscribed_symbols)})
             
             for row in rows:
                 symbol = row[0]
                 vol = float(row[6])
+                raw_close = float(row[5])
+                
+                # Logic lọc nhiễu
+                prev_price = last_prices.get(symbol, 0)
+                if prev_price > 0:
+                    # Nếu nến mới vọt lên quá cao (như giá 65 trong hình), ta bỏ qua không gửi
+                    if abs(raw_close - prev_price) / prev_price > 0.15: # Ngưỡng 15%
+                        continue 
+
+                last_prices[symbol] = raw_close
                 vwap = float(row[7]) / vol if vol > 0 else 0
                 
                 update_msg = json.dumps({
@@ -147,12 +163,11 @@ async def monitor_ohlc_updates():
                     "data": {
                         "time": int(row[1].timestamp()),
                         "open": float(row[2]), "high": float(row[3]),
-                        "low": float(row[4]), "close": float(row[5]),
+                        "low": float(row[4]), "close": raw_close,
                         "volume": int(vol), "vwap": vwap
                     }
                 })
 
-                # 3. CHỈ gửi dữ liệu cho client nào đã subscribe mã đó
                 for ws, subs in connected_clients.items():
                     if symbol in subs:
                         await ws.send(update_msg)
