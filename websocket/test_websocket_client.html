@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Client Test - Stock OHLC</title>
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #e0e0e0;
+        }
+        .container {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.connected {
+            background: #4CAF50;
+            color: white;
+        }
+        .status.disconnected {
+            background: #f44336;
+            color: white;
+        }
+        .status.connecting {
+            background: #ff9800;
+            color: white;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input {
+            background: #3d3d3d;
+            color: #e0e0e0;
+            width: 200px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .messages {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #4CAF50;
+            padding-left: 10px;
+        }
+        .message.error {
+            border-left-color: #f44336;
+            color: #ff6b6b;
+        }
+        .message.info {
+            border-left-color: #2196F3;
+            color: #64b5f6;
+        }
+        .candle-data {
+            background: #2d2d2d;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #4CAF50;
+        }
+        .candle-data h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        th {
+            background: #3d3d3d;
+            color: #4CAF50;
+        }
+        #chartContainer {
+            width: 100%;
+            height: 500px;
+            margin: 20px 0;
+            border: 1px solid #4CAF50;
+            border-radius: 4px;
+        }
+        /* Lớp phủ hiển thị thông số O-H-L-C */
+        .chart-legend {
+            position: absolute;
+            z-index: 2;
+            top: 10px;
+            left: 10px;
+            pointer-events: none; /* Không cản trở việc rê chuột vào chart */
+            font-family: monospace;
+            font-size: 14px;
+            background: rgba(30, 30, 30, 0.7);
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .legend-item { margin-right: 10px; display: inline-block; }
+        .legend-val { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>📊 WebSocket Client Test - Stock OHLC</h1>
+    
+    <div class="container">
+        <h2>Connection</h2>
+        <div>
+            <input type="text" id="wsUrl" value="ws://localhost:8765" placeholder="WebSocket URL">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()" id="disconnectBtn" disabled>Disconnect</button>
+        </div>
+        <div id="status" class="status disconnected">Disconnected</div>
+    </div>
+
+    <div class="container">
+        <h2>Subscribe to Symbol</h2>
+        <div>
+            <input type="text" id="symbolInput" value="ACB" placeholder="Symbol (e.g., ACB, VCB)">
+            <button onclick="subscribe()" id="subscribeBtn" disabled>Subscribe</button>
+            <button onclick="unsubscribe()" id="unsubscribeBtn" disabled>Unsubscribe</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Messages</h2>
+        <div class="messages" id="messages"></div>
+    </div>
+
+    <div class="container">
+        <h2>📈 Chart</h2>
+        <div id="chartContainer"></div>
+    </div>
+
+    <div class="container">
+        <h2>Latest Candle Data</h2>
+        <div id="candleData"></div>
+    </div>
+    <script>
+        let ws = null;
+        let historicalCandles = [];
+        let chart = null, candleSeries = null, vwapSeries = null, volumeSeries = null;
+
+        // Khởi tạo Legend HTML
+        const legend = document.createElement('div');
+        legend.className = 'chart-legend';
+        legend.innerHTML = `<div><span id="legendSymbol" style="color: #4CAF50; font-size: 18px; margin-right: 15px;">-</span></div>
+                            <span class="legend-item">O: <span id="l-o" class="legend-val">-</span></span>
+                            <span class="legend-item">H: <span id="l-h" class="legend-val">-</span></span>
+                            <span class="legend-item">L: <span id="l-l" class="legend-val">-</span></span>
+                            <span class="legend-item">C: <span id="l-c" class="legend-val">-</span></span>
+                            <span class="legend-item">V: <span id="l-v" class="legend-val">-</span></span>`;
+
+        function initChart() {
+            const chartElement = document.getElementById('chartContainer');
+            chartElement.style.position = 'relative';
+            chartElement.appendChild(legend);
+
+            chart = LightweightCharts.createChart(chartElement, {
+                layout: { backgroundColor: '#1e1e1e', textColor: '#d1d4dc' },
+                grid: { vertLines: { color: '#333' }, horzLines: { color: '#333' } },
+                rightPriceScale: {
+                    scaleMargins: { top: 0.1, bottom: 0.25 }, // Chừa 25% phía dưới cho Volume
+                    borderColor: '#555',
+                },
+                timeScale: { borderColor: '#555', timeVisible: true },
+            });
+
+            // 1. Candlestick Series
+            candleSeries = chart.addCandlestickSeries({
+                upColor: '#26a69a', downColor: '#ef5350',
+                borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+                wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+            });
+
+            // 2. Volume Histogram Series (MỚI)
+            volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: { type: 'volume' },
+                priceScaleId: '', // Overlay mode
+            });
+
+            // Cấu hình Volume nằm ở đáy biểu đồ
+            volumeSeries.priceScale().applyOptions({
+                scaleMargins: { top: 0.8, bottom: 0 },
+            });
+
+            // 3. VWAP Line
+            vwapSeries = chart.addLineSeries({ color: '#2196F3', lineWidth: 2, title: 'VWAP' });
+
+            // 4. Xử lý sự kiện rê chuột (Crosshair) để cập nhật Legend
+            chart.subscribeCrosshairMove(param => {
+                if (!param.time || param.point.x < 0 || param.point.y < 0) {
+                    updateLegendValues(historicalCandles[historicalCandles.length - 1]); // Hiển thị nến cuối nếu không rê chuột
+                    return;
+                }
+                const candle = param.seriesData.get(candleSeries);
+                const volume = param.seriesData.get(volumeSeries);
+                if (candle) {
+                    updateLegendValues({ ...candle, volume: volume ? volume.value : 0 });
+                }
+            });
+        }
+
+        function updateLegendValues(data) {
+            if (!data) return;
+            document.getElementById('l-o').innerText = data.open.toFixed(2);
+            document.getElementById('l-h').innerText = data.high.toFixed(2);
+            document.getElementById('l-l').innerText = data.low.toFixed(2);
+            document.getElementById('l-c').innerText = data.close.toFixed(2);
+            document.getElementById('l-v').innerText = (data.volume || 0).toLocaleString();
+            const color = data.close >= data.open ? '#26a69a' : '#ef5350';
+            ['l-o', 'l-h', 'l-l', 'l-c'].forEach(id => document.getElementById(id).style.color = color);
+        }
+
+        function updateChart() {
+            if (!candleSeries || !volumeSeries || !vwapSeries) return;
+            if (historicalCandles.length === 0) return;
+            
+            const sorted = [...historicalCandles].sort((a, b) => a.time - b.time);
+
+            const candleData = sorted.map(c => ({
+                time: c.time, 
+                open: parseFloat(c.open), 
+                high: parseFloat(c.high), 
+                low: parseFloat(c.low), 
+                close: parseFloat(c.close)
+            }));
+
+            const volData = sorted.map(c => ({
+                time: c.time,
+                value: parseFloat(c.volume || 0),
+                color: c.close >= c.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+            }));
+
+            const vwapData = sorted.map(c => ({ 
+                time: c.time, 
+                value: parseFloat(c.vwap || 0) 
+            }));
+
+            candleSeries.setData(candleData);
+            volumeSeries.setData(volData);
+            vwapSeries.setData(vwapData);
+            chart.timeScale().fitContent();
+            
+            if (sorted.length > 0) {
+                updateLegendValues(sorted[sorted.length - 1]);
+            }
+        }
+
+        function addMessage(message, type = 'info') {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateStatus(status, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${className}`;
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+
+            updateStatus('Connecting...', 'connecting');
+            ws = new WebSocket(url);
+
+            ws.onopen = () => {
+                updateStatus('Connected', 'connected');
+                addMessage('✅ Connected to WebSocket server!');
+                document.getElementById('disconnectBtn').disabled = false;
+                document.getElementById('subscribeBtn').disabled = false;
+                if (!chart) {
+                    setTimeout(() => {
+                        if (typeof LightweightCharts !== 'undefined') {
+                            initChart();
+                            addMessage('📈 Chart initialized');
+                        } else {
+                            addMessage('❌ Chart library not ready', 'error');
+                        }
+                    }, 100);
+                }
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'historical') {
+                        historicalCandles = data.data;
+                        addMessage(`📊 Received ${historicalCandles.length} historical candles`);
+                        updateChart();
+                        renderTable();
+                    } else if (data.type === 'candle_update') {
+                        updateOrAppendCandle(data.data);
+                        updateChart();
+                    }
+                } catch (e) {
+                    addMessage(`❌ Error parsing message: ${e}`, 'error');
+                    console.error('Parse error:', e, event.data);
+                }
+            };
+
+            ws.onclose = () => {
+                updateStatus('Disconnected', 'disconnected');
+                addMessage('❌ Server closed connection');
+            };
+
+            ws.onerror = (error) => {
+                addMessage(`❌ WebSocket error: ${error}`, 'error');
+                updateStatus('Error', 'disconnected');
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            updateStatus('Disconnected', 'disconnected');
+            document.getElementById('disconnectBtn').disabled = true;
+            document.getElementById('subscribeBtn').disabled = true;
+        }
+
+        function subscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('❌ Not connected to server', 'error');
+                return;
+            }
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            if (!symbol) {
+                addMessage('❌ Please enter a symbol', 'error');
+                return;
+            }
+            document.getElementById('legendSymbol').innerText = symbol;
+            historicalCandles = [];
+            if (candleSeries && volumeSeries && vwapSeries) {
+                candleSeries.setData([]);
+                volumeSeries.setData([]);
+                vwapSeries.setData([]);
+            }
+            ws.send(JSON.stringify({ action: 'subscribe', symbol: symbol }));
+            addMessage(`🔍 Subscribed to ${symbol}`);
+        }
+
+        function unsubscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            ws.send(JSON.stringify({ action: 'unsubscribe', symbol: symbol }));
+            addMessage(`📊 Unsubscribed from ${symbol}`);
+        }
+
+        function updateOrAppendCandle(newCandle) {
+            const normalizeTime = (time) => {
+                if (typeof time === 'string') {
+                    return new Date(time).getTime();
+                } else if (typeof time === 'number') {
+                    return time * 1000;
+                }
+                return 0;
+            };
+
+            const newTime = normalizeTime(newCandle.time);
+            const index = historicalCandles.findIndex(c => {
+                const cTime = normalizeTime(c.time);
+                return Math.abs(cTime - newTime) < 60000;
+            });
+            
+            if (index !== -1) {
+                historicalCandles[index] = newCandle;
+            } else {
+                historicalCandles.push(newCandle);
+                if (historicalCandles.length > 200) {
+                    historicalCandles.shift();
+                }
+            }
+            renderTable();
+        }
+
+        function renderTable() {
+            const candleDataDiv = document.getElementById('candleData');
+            if (historicalCandles.length === 0) {
+                candleDataDiv.innerHTML = '<p>No candle data</p>';
+                return;
+            }
+            
+            const sorted = [...historicalCandles].sort((a, b) => {
+                const timeA = typeof a.time === 'string' ? new Date(a.time).getTime() : (a.time * 1000);
+                const timeB = typeof b.time === 'string' ? new Date(b.time).getTime() : (b.time * 1000);
+                return timeB - timeA;
+            });
+            
+            let html = '<table><thead><tr><th>Time (VN)</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Vol</th><th>VWAP</th></tr></thead><tbody>';
+            
+            sorted.forEach(c => {
+                let date;
+                if (typeof c.time === 'string') {
+                    date = new Date(c.time);
+                } else if (typeof c.time === 'number') {
+                    date = new Date(c.time * 1000);
+                } else {
+                    date = new Date();
+                }
+                
+                const dateStr = date.toLocaleString('vi-VN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZone: 'Asia/Ho_Chi_Minh'
+                });
+                
+                html += `<tr>
+                    <td>${dateStr}</td>
+                    <td>${c.open.toFixed(2)}</td>
+                    <td>${c.high.toFixed(2)}</td>
+                    <td>${c.low.toFixed(2)}</td>
+                    <td style="font-weight:bold; color: ${c.close >= c.open ? '#4CAF50' : '#f44336'}">${c.close.toFixed(2)}</td>
+                    <td>${c.volume.toLocaleString()}</td>
+                    <td style="color: #2196F3">${c.vwap.toFixed(2)}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            candleDataDiv.innerHTML = html;
+        }
+
+        window.onload = () => {
+            setTimeout(() => {
+                if (typeof LightweightCharts !== 'undefined') {
+                    initChart();
+                    addMessage('Ready to connect. Click "Connect" button.');
+                } else {
+                    addMessage('❌ Chart library not loaded. Please refresh page.', 'error');
+                }
+            }, 100);
+            
+            window.addEventListener('resize', () => {
+                if (chart) {
+                    const chartElement = document.getElementById('chartContainer');
+                    chart.applyOptions({ width: chartElement.clientWidth });
+                }
+            });
+        };
+    </script>
+    
+</body>
+</html>
+

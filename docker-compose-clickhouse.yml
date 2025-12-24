@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    hostname: postgres
+    container_name: postgres_lsmi
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: debezium
+      POSTGRES_PASSWORD: debezium
+      POSTGRES_DB: stream_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./stock_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    command: postgres -c wal_level=logical  # Enable logical replication for Debezium
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U debezium"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.12-alpine
+    hostname: clickhouse
+    container_name: clickhouse_lsmi
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9000:9000"  # Native protocol
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse_init:/docker-entrypoint-initdb.d
+    environment:
+      CLICKHOUSE_DB: stock_db
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    hostname: pgadmin
+    container_name: pgadmin_lsmi
+    depends_on:
+      - postgres
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  tabix:
+    image: spoonest/clickhouse-tabix-web-client:latest
+    hostname: tabix
+    container_name: tabix_lsmi
+    depends_on:
+      - clickhouse
+    ports:
+      - "8081:80"
+    environment:
+      - CH_HOST=clickhouse
+      - CH_PORT=8123
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  pgadmin_data:
+
