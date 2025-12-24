@@ -658,14 +658,6 @@ def main():
     print(f"\n Đọc symbols từ file symbol.txt...")
     symbols = get_symbols_from_file('symbol.txt')
 
-    if not symbols:
-        print("\n File symbol.txt không có mã cổ phiếu nào!")
-        print("👉 Hãy đảm bảo mỗi dòng trong file là 1 mã, ví dụ:")
-        print("   VIC")
-        print("   VNM")
-        print("   VCB")
-        sys.exit(1)
-
     print(f" Đọc được {len(symbols)} symbols")
     print(f"   Sample: {', '.join(symbols[:10])}")
     if len(symbols) > 10:
