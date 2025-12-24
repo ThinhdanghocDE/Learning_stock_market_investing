@@ -61,8 +61,8 @@ def get_latest_data_vnstock(symbol):
         
         # 2. Lấy historical data cho ngày 22-12-2025
         print("  2. Thu lay historical data cho ngay 22-12-2025...")
-        start_date = '2025-12-22'
-        end_date = '2025-12-22'
+        start_date = '2025-12-24'
+        end_date = '2025-12-24'
         try:
             df_historical = quote.history(
                 start=start_date,
