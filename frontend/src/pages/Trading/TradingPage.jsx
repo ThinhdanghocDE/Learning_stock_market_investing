@@ -694,7 +694,7 @@ function TradingPage() {
       
       // LIVE mode: limit=200 (chỉ lấy 200 candles gần nhất)
       // HISTORY mode: limit=10000 (lấy đủ dữ liệu trong khoảng thời gian)
-      const limit = isHistoryMode ? 10000 : 400
+      const limit = isHistoryMode ? 10000 : 1000
       let url = `/ohlc/historical?symbol=${symbol}&interval=1m&limit=${limit}`
       
       if (actualStartDate) {
@@ -972,18 +972,20 @@ function TradingPage() {
 
   // Hàm đặt lệnh
   const handleSubmitOrder = async (sideOverride = null) => {
-    // Sử dụng sideOverride nếu có, nếu không thì dùng orderSide hiện tại
-    const currentSide = sideOverride || orderSide
-    
-    if (!orderQuantity || parseInt(orderQuantity) === 0) {
-      showModal('Thông báo', 'Vui lòng nhập số lượng', 'warning')
-      return
-    }
-    
-    if ((orderType === 'LIMIT' || orderType === 'MTL') && !orderPrice) {
-      showModal('Thông báo', 'Vui lòng nhập giá', 'warning')
-      return
-    }
+    try {
+      // Sử dụng sideOverride nếu có, nếu không thì dùng orderSide hiện tại
+      const currentSide = sideOverride || orderSide
+      
+      if (!orderQuantity || parseInt(orderQuantity) === 0) {
+        showModal('Thông báo', 'Vui lòng nhập số lượng', 'warning')
+        return
+      }
+      
+      // Chỉ yêu cầu giá khi là lệnh LIMIT (LO)
+      if (orderType === 'LIMIT' && !orderPrice) {
+        showModal('Thông báo', 'Vui lòng nhập giá', 'warning')
+        return
+      }
 
     // Kiểm tra số dư trước khi đặt lệnh MUA
     if (currentSide === 'BUY') {
@@ -1002,10 +1004,19 @@ function TradingPage() {
           showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
           return
         }
-      } else if (orderType === 'LIMIT' || orderType === 'MTL') {
-        // Với LIMIT/MTL order, dùng giá đã nhập
+      } else if (orderType === 'LIMIT') {
+        // Với LIMIT order, dùng giá đã nhập
         // Giá từ ClickHouse là nghìn VNĐ, cần nhân 1000 khi tính tiền
         requiredAmount = parseFloat(orderPrice) * quantity * 1000
+      } else if (orderType === 'MTL') {
+        // Với MTL order, lấy giá mới nhất từ chart
+        const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+        if (lastCandle && lastCandle.close) {
+          requiredAmount = parseFloat(lastCandle.close) * quantity * 1000
+        } else {
+          showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
+          return
+        }
       } else {
         // ATO, ATC - lấy giá từ candle cuối cùng
         const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
@@ -1029,41 +1040,48 @@ function TradingPage() {
         ? challengePositions.find(p => p.symbol === symbol)
         : positions.find(p => p.symbol === symbol)
       
-      if (!existing || existing.quantity < quantity) {
-        showModal('Lỗi', 'Số lượng chứng khoán không đủ để bán', 'error')
+      if (!existing) {
+        showModal('Lỗi', 'Bạn chưa có cổ phiếu này để bán', 'error')
+        setOrderSubmitting(false)
+        return
+      }
+      
+      if (existing.quantity < quantity) {
+        showModal('Lỗi', `Số lượng chứng khoán không đủ. Bạn có ${existing.quantity} cổ, cần ${quantity} cổ`, 'error')
+        setOrderSubmitting(false)
         return
       }
     }
 
-    // Kiểm tra phiên giao dịch
-    const session = getCurrentSession()
-    
-    if (orderType === 'ATO' && session !== 'ATO_SESSION') {
-      showModal('Lỗi', 'Lệnh ATO chỉ dùng được trong phiên mở cửa (09:00-09:15)', 'error')
-      setOrderSubmitting(false)
-      return
-    }
-    
-    if (orderType === 'ATC' && session === 'CONTINUOUS_SESSION') {
-      // Cho phép đặt nhưng báo là nến sẽ không nhảy ngay
-      // Logic: Đẩy lệnh vào mảng "PendingOrders", không trừ tiền/khớp nến ngay
-      const pendingOrder = {
-        symbol,
-        side: currentSide,
-        orderType: 'ATC',
-        quantity: parseInt(orderQuantity),
-        createdAt: new Date().toISOString()
+      // Kiểm tra phiên giao dịch
+      const session = getCurrentSession()
+      
+      if (orderType === 'ATO' && session !== 'ATO_SESSION') {
+        showModal('Lỗi', 'Lệnh ATO chỉ dùng được trong phiên mở cửa (09:00-09:15)', 'error')
+        setOrderSubmitting(false)
+        return
       }
-      setPendingOrders(prev => [...prev, pendingOrder])
-      showModal('Thông báo', 'Lệnh ATC đã được ghi nhận và sẽ chờ khớp sau 14:30', 'info')
-      setOrderQuantity('')
-      setOrderPrice('')
-      setOrderSubmitting(false)
-      return
-    }
+      
+      if (orderType === 'ATC' && session === 'CONTINUOUS_SESSION') {
+        // Cho phép đặt nhưng báo là nến sẽ không nhảy ngay
+        // Logic: Đẩy lệnh vào mảng "PendingOrders", không trừ tiền/khớp nến ngay
+        const pendingOrder = {
+          symbol,
+          side: currentSide,
+          orderType: 'ATC',
+          quantity: parseInt(orderQuantity),
+          createdAt: new Date().toISOString()
+        }
+        setPendingOrders(prev => [...prev, pendingOrder])
+        showModal('Thông báo', 'Lệnh ATC đã được ghi nhận và sẽ chờ khớp sau 14:30', 'info')
+        setOrderQuantity('')
+        setOrderPrice('')
+        setOrderSubmitting(false)
+        return
+      }
 
-    setOrderSubmitting(true)
-    try {
+      setOrderSubmitting(true)
+      
       // CHALLENGE MODE: Xử lý local, không gọi API
       if (challengeActive) {
         // QUAN TRỌNG: Lấy giá tại thời điểm hiện tại của challenge (challengeCurrentDate + endTime)
@@ -1074,49 +1092,26 @@ function TradingPage() {
           // Với LIMIT order, dùng giá đã nhập (đã là nghìn VNĐ)
           fillPrice = parseFloat(orderPrice)
         } else if (orderType === 'MTL') {
-          // MTL: Giai đoạn 1 - Khớp ngay với giá bán thấp nhất (cho lệnh mua) hoặc giá mua cao nhất (cho lệnh bán)
-          // Trong challenge mode, dùng giá close của candle hiện tại (giả sử là giá thị trường)
-          if (challengeCurrentDate && endTime) {
-            const targetDateTime = `${challengeCurrentDate}T${endTime}:00`
-            const normalizeTime = (time) => {
-              if (typeof time === 'string') {
-                const hasTimezone = time.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(time)
-                if (!hasTimezone) {
-                  const dtVN = new Date(time + '+07:00')
-                  return dtVN.getTime()
-                }
-                return new Date(time).getTime()
-              } else if (typeof time === 'number') {
-                return time > 1e12 ? time : time * 1000
-              }
-              return 0
-            }
-            const targetTime = normalizeTime(targetDateTime)
-            let closestCandle = null
-            let minDiff = Infinity
-            const maxDiff = 5 * 60 * 1000
-            historicalCandlesRef.current.forEach(candle => {
-              const candleTime = normalizeTime(candle.time)
-              if (candleTime === 0) return
-              const diff = Math.abs(candleTime - targetTime)
-              if (diff < maxDiff && diff < minDiff) {
-                minDiff = diff
-                closestCandle = candle
-              }
+          // MTL: Lấy giá mới nhất từ chart (giá close của candle cuối cùng)
+          const getPriceAtSimulatedTime = () => {
+            if (historicalCandlesRef.current.length === 0) return null
+            
+            // Sắp xếp mảng để đảm bảo nến cuối là nến mới nhất theo thời gian
+            const sorted = [...historicalCandlesRef.current].sort((a, b) => {
+              const timeA = typeof a.time === 'string' ? new Date(a.time).getTime() : (a.time > 1e12 ? a.time : a.time * 1000)
+              const timeB = typeof b.time === 'string' ? new Date(b.time).getTime() : (b.time > 1e12 ? b.time : b.time * 1000)
+              return timeA - timeB
             })
-            if (closestCandle && closestCandle.close) {
-              fillPrice = parseFloat(closestCandle.close)
-            } else {
-              const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-              if (lastCandle && lastCandle.close) {
-                fillPrice = parseFloat(lastCandle.close)
-              }
-            }
-          } else {
-            const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-            if (lastCandle && lastCandle.close) {
-              fillPrice = parseFloat(lastCandle.close)
-            }
+            const latest = sorted[sorted.length - 1]
+            return latest ? parseFloat(latest.close) : null
+          }
+          
+          fillPrice = getPriceAtSimulatedTime()
+          
+          if (!fillPrice) {
+            showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
+            setOrderSubmitting(false)
+            return
           }
         } else {
           // Với MARKET order, lấy giá tại thời điểm hiện tại của challenge
@@ -1181,10 +1176,16 @@ function TradingPage() {
           const existing = updatedPositions.find(p => p.symbol === orderSymbol)
           if (existing) {
             // Cập nhật position hiện có: tính lại giá trung bình
+            // Công thức: Giá TB mới = (Tổng chi phí cũ + Tổng chi phí mới) / (Số lượng cũ + Số lượng mới)
+            // Ví dụ: Đã có 100 cổ @ 20.0, mua thêm 50 cổ @ 25.0
+            //   totalCostOld = 20.0 * 100 = 2000
+            //   totalCostForAvgPrice = 25.0 * 50 = 1250
+            //   newAvgPrice = (2000 + 1250) / (100 + 50) = 21.67
             // avg_price lưu ở đơn vị nghìn VNĐ, nên không nhân 1000
             const totalQuantity = existing.quantity + fillQuantity
-            const totalCostOld = existing.avg_price * existing.quantity
-            const newAvgPrice = (totalCostOld + totalCostForAvgPrice) / totalQuantity
+            const totalCostOld = existing.avg_price * existing.quantity // Tổng chi phí cũ
+            const totalCostNew = totalCostForAvgPrice // Tổng chi phí mới (fillPrice * fillQuantity)
+            const newAvgPrice = (totalCostOld + totalCostNew) / totalQuantity
             updatedPositions = updatedPositions.map(p => 
               p.symbol === orderSymbol 
                 ? { ...p, quantity: totalQuantity, avg_price: newAvgPrice }
@@ -1269,10 +1270,11 @@ function TradingPage() {
       }
       
       // REALTIME MODE: Gọi API
+      // Backend chỉ chấp nhận MARKET hoặc LIMIT, nên MTL sẽ được gửi như MARKET
       const orderData = {
         symbol: symbol,
         side: currentSide,
-        order_type: orderType,
+        order_type: orderType === 'MTL' ? 'MARKET' : orderType, // MTL gửi như MARKET
         quantity: parseInt(orderQuantity),
         trading_mode: 'REALTIME',
       }
@@ -1281,6 +1283,7 @@ function TradingPage() {
       if (orderType === 'LIMIT') {
         orderData.price = parseFloat(orderPrice)
       }
+      // MTL không cần gửi price vì đã gửi như MARKET, backend sẽ tự lấy giá thị trường
 
       const response = await api.post('/portfolio/orders', orderData)
       
@@ -1975,8 +1978,8 @@ function TradingPage() {
             </button>
           </div>
 
-          {/* Price Input */}
-          {(orderType === 'LIMIT' || orderType === 'MTL') && (
+          {/* Price Input - Chỉ hiển thị cho LO (LIMIT) */}
+          {orderType === 'LIMIT' && (
             <div className="order-form-group">
               <label htmlFor="order-price">Giá đặt</label>
               <div className="price-input-wrapper">
@@ -2123,8 +2126,14 @@ function TradingPage() {
               const qty = parseInt(orderQuantity)
               let price = 0
               
-              if (orderType === 'LIMIT' || orderType === 'MTL') {
+              if (orderType === 'LIMIT') {
                 price = parseFloat(orderPrice) || 0
+              } else if (orderType === 'MTL') {
+                // MTL: Lấy giá mới nhất từ chart
+                const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                if (lastCandle && lastCandle.close) {
+                  price = parseFloat(lastCandle.close)
+                }
               } else {
                 // MARKET, ATO, ATC - lấy giá từ candle cuối cùng
                 const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
@@ -2145,8 +2154,14 @@ function TradingPage() {
                 const availableBalance = challengeActive ? challengeBalance : (portfolio ? parseFloat(portfolio.cash_balance || 0) : 0)
                 let price = 0
                 
-                if (orderType === 'LIMIT' || orderType === 'MTL') {
+                if (orderType === 'LIMIT') {
                   price = parseFloat(orderPrice) || 0
+                } else if (orderType === 'MTL') {
+                  // MTL: Lấy giá mới nhất từ chart
+                  const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                  if (lastCandle && lastCandle.close) {
+                    price = parseFloat(lastCandle.close)
+                  }
                 } else {
                   const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
                   if (lastCandle && lastCandle.close) {
@@ -2178,7 +2193,7 @@ function TradingPage() {
                       // Gọi handleSubmitOrder với side = 'BUY' để đảm bảo đúng
                       handleSubmitOrder('BUY')
                     }}
-                    disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0 || ((orderType === 'LIMIT' || orderType === 'MTL') && !orderPrice)}
+                    disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0 || (orderType === 'LIMIT' && !orderPrice)}
                   >
                     MUA
                     <span className="order-value">Giá trị: {orderValue > 0 ? orderValue.toLocaleString('vi-VN') : '-'}</span>
@@ -2190,7 +2205,7 @@ function TradingPage() {
                       // Gọi handleSubmitOrder với side = 'SELL' để đảm bảo đúng
                       handleSubmitOrder('SELL')
                     }}
-                    disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0 || ((orderType === 'LIMIT' || orderType === 'MTL') && !orderPrice)}
+                    disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0 || (orderType === 'LIMIT' && !orderPrice)}
                   >
                     BÁN
                     <span className="order-value">Giá trị: {orderValue > 0 ? orderValue.toLocaleString('vi-VN') : '-'}</span>
