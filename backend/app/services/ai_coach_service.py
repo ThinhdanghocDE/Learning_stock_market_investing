@@ -10,14 +10,18 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from decimal import Decimal
 from app.repositories.portfolio_repository import PortfolioRepository, VirtualPositionRepository
+from app.config import settings
 
 class AICoachService:
     """AI Coach service sử dụng Gemini 1.5 Flash"""
     
     def __init__(self):
         """Khởi tạo Gemini client"""
-        # API key hardcoded theo yêu cầu
-        self.api_key = "AIzaSyBeylhRNp5cDm38CEniUNoTVWG4fk0i49w"
+        # Lấy API key từ biến môi trường
+        self.api_key = settings.GEMINI_API_KEY
+        
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY không được tìm thấy trong biến môi trường. Vui lòng thêm GEMINI_API_KEY vào file .env")
         
         try:
             genai.configure(api_key=self.api_key)

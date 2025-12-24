@@ -60,6 +60,14 @@ JWT_SECRET_KEY=your-secret-key-change-in-production
 JWT_ALGORITHM=HS256
 JWT_EXPIRATION_HOURS=24
 
+# WebSocket
+WEBSOCKET_HOST=0.0.0.0
+WEBSOCKET_PORT=8765
+
+# LLM API
+GEMINI_API_KEY=your-gemini-api-key-here
+# OPENAI_API_KEY=your-openai-api-key-here  # Optional
+
 # Debug
 DEBUG=True
 ```
