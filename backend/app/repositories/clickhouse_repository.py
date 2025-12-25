@@ -16,33 +16,65 @@ class ClickHouseRepository:
     def get_symbols(self, limit: Optional[int] = None) -> List[str]:
         """
         Lấy danh sách symbols từ ClickHouse
-        Ưu tiên lấy từ bảng ohlc (có dữ liệu thực tế), fallback về bảng symbols nếu cần
+        Ưu tiên lấy từ bảng symbols (đầy đủ hơn), sau đó merge với symbols từ ohlc
         """
-        # Query từ bảng ohlc để lấy tất cả các mã có dữ liệu thực tế
-        query = "SELECT DISTINCT symbol FROM stock_db.ohlc ORDER BY symbol"
-        if limit:
-            query += f" LIMIT {limit}"
+        all_symbols = set()
         
+        # 1. Lấy từ bảng symbols (đầy đủ hơn, có thông tin công ty)
         try:
+            query = "SELECT DISTINCT symbol FROM stock_db.symbols WHERE status = 'ACTIVE' ORDER BY symbol"
+            result = self.client.execute(query)
+            symbols_from_table = [row[0] for row in result]
+            all_symbols.update(symbols_from_table)
+        except Exception as e:
+            print(f"Error querying symbols from symbols table: {e}")
+        
+        # 2. Lấy từ bảng ohlc (có dữ liệu thực tế) để bổ sung
+        try:
+            query = "SELECT DISTINCT symbol FROM stock_db.ohlc ORDER BY symbol"
             result = self.client.execute(query)
             symbols_from_ohlc = [row[0] for row in result]
-            
-            # Nếu có kết quả từ ohlc, trả về luôn
-            if symbols_from_ohlc:
-                return symbols_from_ohlc
+            all_symbols.update(symbols_from_ohlc)
         except Exception as e:
             print(f"Error querying symbols from ohlc: {e}")
         
-        # Fallback: query từ bảng symbols nếu ohlc không có dữ liệu hoặc lỗi
+        # 3. Sắp xếp và giới hạn nếu cần
+        sorted_symbols = sorted(list(all_symbols))
+        
+        if limit:
+            return sorted_symbols[:limit]
+        
+        return sorted_symbols
+    
+    def get_symbol_info(self, symbol: str) -> Optional[Dict]:
+        """
+        Lấy thông tin chi tiết của một symbol từ bảng symbols
+        """
         try:
-            query = "SELECT DISTINCT symbol FROM stock_db.symbols WHERE status = 'ACTIVE' ORDER BY symbol"
-            if limit:
-                query += f" LIMIT {limit}"
-            result = self.client.execute(query)
-            return [row[0] for row in result]
+            query = """
+                SELECT symbol, company_name, sector, industry, exchange, lot_size, isin, status
+                FROM stock_db.symbols
+                WHERE symbol = %(symbol)s AND status = 'ACTIVE'
+                LIMIT 1
+            """
+            result = self.client.execute(query, {'symbol': symbol})
+            
+            if result and len(result) > 0:
+                row = result[0]
+                return {
+                    'symbol': row[0],
+                    'company_name': row[1] or '',
+                    'sector': row[2] or '',
+                    'industry': row[3] or '',
+                    'exchange': row[4] or '',
+                    'lot_size': row[5] or 100,
+                    'isin': row[6] or '',
+                    'status': row[7] or 'ACTIVE'
+                }
         except Exception as e:
-            print(f"Error querying symbols from symbols table: {e}")
-            return []
+            print(f"Error querying symbol info: {e}")
+        
+        return None
     
     def get_ohlc_historical(
         self,

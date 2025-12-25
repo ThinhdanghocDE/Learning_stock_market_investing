@@ -42,9 +42,9 @@ class VirtualOrderBase(BaseModel):
     """Base virtual order schema"""
     symbol: str = Field(..., max_length=10, description="Mã chứng khoán")
     side: str = Field(..., pattern="^(BUY|SELL)$", description="BUY hoặc SELL")
-    order_type: str = Field(default="MARKET", pattern="^(MARKET|LIMIT)$", description="MARKET hoặc LIMIT")
+    order_type: str = Field(default="MARKET", pattern="^(MARKET|LIMIT|ATO|ATC)$", description="MARKET, LIMIT, ATO (At-the-Open), hoặc ATC (At-the-Close)")
     quantity: int = Field(..., gt=0, description="Số lượng")
-    price: Optional[Decimal] = Field(None, description="Giá (bắt buộc nếu LIMIT order)")
+    price: Optional[Decimal] = Field(None, description="Giá (bắt buộc nếu LIMIT order, NULL cho ATO/ATC)")
     trading_mode: str = Field(default="REALTIME", pattern="^(REALTIME|PRACTICE)$", description="REALTIME hoặc PRACTICE")
     execution_time: Optional[datetime] = Field(None, description="Thời điểm thực thi order (chỉ cho PRACTICE mode). None = thời điểm hiện tại")
 

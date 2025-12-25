@@ -38,9 +38,9 @@ class VirtualOrder(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     symbol = Column(String(10), nullable=False, index=True)
     side = Column(String(4), nullable=False)  # BUY, SELL
-    order_type = Column(String(10), default="MARKET", nullable=False)  # MARKET, LIMIT
+    order_type = Column(String(10), default="MARKET", nullable=False)  # MARKET, LIMIT, ATO, ATC
     quantity = Column(Integer, nullable=False)
-    price = Column(Numeric(10, 2), nullable=True)  # NULL nếu MARKET order
+    price = Column(Numeric(10, 2), nullable=True)  # NULL nếu MARKET order, NULL cho ATO/ATC (sẽ fill sau)
     status = Column(String(20), default="PENDING", nullable=False, index=True)  # PENDING, QUEUED, FILLED, CANCELLED, REJECTED
     trading_mode = Column(String(20), default="REALTIME", nullable=False)  # REALTIME, PRACTICE
     execution_time = Column(DateTime(timezone=True), nullable=True)  # Thời điểm thực thi (cho PRACTICE mode)
@@ -56,7 +56,7 @@ class VirtualOrder(Base):
     # Constraints
     __table_args__ = (
         CheckConstraint("side IN ('BUY', 'SELL')", name="check_side"),
-        CheckConstraint("order_type IN ('MARKET', 'LIMIT')", name="check_order_type"),
+        CheckConstraint("order_type IN ('MARKET', 'LIMIT', 'ATO', 'ATC')", name="check_order_type"),
         CheckConstraint("status IN ('PENDING', 'QUEUED', 'FILLED', 'CANCELLED', 'REJECTED')", name="check_status"),
         CheckConstraint("trading_mode IN ('REALTIME', 'PRACTICE')", name="check_trading_mode"),
     )

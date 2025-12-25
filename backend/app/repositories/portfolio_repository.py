@@ -146,6 +146,21 @@ class VirtualOrderRepository:
         return query.order_by(VirtualOrder.created_at).all()
     
     @staticmethod
+    def get_pending_ato_atc_orders(db: Session, user_id: Optional[int] = None, symbol: Optional[str] = None) -> List[VirtualOrder]:
+        """Lấy danh sách ATO/ATC orders đang pending"""
+        query = db.query(VirtualOrder).filter(
+            and_(
+                VirtualOrder.order_type.in_(["ATO", "ATC"]),
+                VirtualOrder.status == "PENDING"
+            )
+        )
+        if user_id:
+            query = query.filter(VirtualOrder.user_id == user_id)
+        if symbol:
+            query = query.filter(VirtualOrder.symbol == symbol)
+        return query.order_by(VirtualOrder.created_at).all()
+    
+    @staticmethod
     def get_queued_market_orders(db: Session, user_id: Optional[int] = None) -> List[VirtualOrder]:
         """Lấy danh sách QUEUED MARKET orders (chỉ REALTIME mode)"""
         query = db.query(VirtualOrder).filter(
