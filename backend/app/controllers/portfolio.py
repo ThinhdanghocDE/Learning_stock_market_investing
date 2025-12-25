@@ -161,6 +161,7 @@ async def get_orders(
     limit: int = Query(100, ge=1, le=1000),
     status_filter: Optional[str] = Query(None, description="Filter by status: PENDING, QUEUED, FILLED, CANCELLED, REJECTED"),
     trading_mode_filter: Optional[str] = Query(None, description="Filter by trading mode: REALTIME, PRACTICE"),
+    order_type_filter: Optional[str] = Query(None, description="Filter by order type: MARKET, LIMIT, ATO, ATC"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -173,6 +174,19 @@ async def get_orders(
     if trading_mode_filter:
         orders = [o for o in orders if o.trading_mode == trading_mode_filter.upper()]
     
+    if order_type_filter:
+        orders = [o for o in orders if o.order_type == order_type_filter.upper()]
+    
+    return orders
+
+
+@router.get("/orders/pending-ato-atc", response_model=List[VirtualOrderResponse])
+async def get_pending_ato_atc_orders(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Lấy danh sách pending ATO/ATC orders của user"""
+    orders = VirtualOrderRepository.get_pending_ato_atc_orders(db, user_id=current_user.id)
     return orders
 
 
@@ -191,14 +205,25 @@ async def create_order(
       - Ngoài giờ: Orders sẽ ở status QUEUED
     - PRACTICE mode: Không kiểm tra giờ giao dịch, fill ngay
     """
-    order, error = TradingService.create_order(db, current_user.id, order_data, ch_client)
-    if error and order is None:
+    try:
+        order, error = TradingService.create_order(db, current_user.id, order_data, ch_client)
+        if error and order is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error
+            )
+        # Nếu có error nhưng order đã được tạo (QUEUED), vẫn trả về order nhưng có thể log warning
+        return order
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_detail = str(e)
+        traceback.print_exc()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {error_detail}"
         )
-    # Nếu có error nhưng order đã được tạo (QUEUED), vẫn trả về order nhưng có thể log warning
-    return order
 
 
 @router.delete("/orders/{order_id}", response_model=VirtualOrderResponse)
@@ -231,6 +256,33 @@ async def get_order(
             detail="Order not found"
         )
     return order
+
+
+@router.post("/orders/{order_id}/fill", response_model=VirtualOrderResponse)
+async def fill_order(
+    order_id: int,
+    fill_price: float = Query(..., description="Giá để fill order (nghìn VNĐ)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    ch_client = Depends(get_clickhouse)
+):
+    """Fill order với giá cụ thể (dùng cho ATO/ATC)"""
+    from decimal import Decimal
+    
+    order = VirtualOrderRepository.get_by_id(db, order_id)
+    if not order or order.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found"
+        )
+    
+    filled_order, error = TradingService.fill_order(db, order_id, Decimal(str(fill_price)), ch_client)
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+    return filled_order
 
 
 @router.post("/update-value")

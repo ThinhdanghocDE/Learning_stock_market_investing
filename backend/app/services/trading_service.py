@@ -29,13 +29,14 @@ class TradingService:
         """
         portfolio = PortfolioRepository.get_or_create_portfolio(db, user_id)
         
-        # Validate LIMIT order có price
+        # Validate LIMIT order có price (ATO/ATC không cần price vì sẽ fill sau)
         if order_data.order_type == "LIMIT" and not order_data.price:
             return False, "LIMIT order requires price"
         
         # Validate BUY order có đủ tiền
+        # ATO/ATC: Không validate balance ngay vì giá chưa biết, sẽ validate khi fill
         # Trong PRACTICE mode, không validate balance vì đây là mode thực hành với số dư ảo
-        if order_data.side == "BUY" and order_data.trading_mode != "PRACTICE":
+        if order_data.side == "BUY" and order_data.trading_mode != "PRACTICE" and order_data.order_type not in ["ATO", "ATC"]:
             # Xác định giá để tính toán
             price_to_use = order_data.price if order_data.price else current_price
             if not price_to_use:
@@ -122,7 +123,7 @@ class TradingService:
         if not order_data.execution_time:  # Chỉ kiểm tra nếu không có execution_time (real-time)
             can_trade, trade_error = TradingHoursService.can_trade_now(order_data.trading_mode)
         
-        # Get price nếu MARKET order
+        # Get price nếu MARKET order (ATO/ATC không cần giá ngay, sẽ fill sau)
         # Ưu tiên dùng giá từ frontend (current_price từ chart - giá mới nhất real-time)
         # Chỉ fallback về get_current_price nếu không có
         current_price = None
@@ -151,13 +152,14 @@ class TradingService:
                 time_str = price_time.strftime("%Y-%m-%d %H:%M:%S") if price_time else "hiện tại"
                 return None, f"Could not get price for {order_data.symbol} at {time_str}"
         
-        # Validate order
+        # Validate order (ATO/ATC không cần validate balance ngay vì giá chưa biết)
         is_valid, error = TradingService.validate_order(db, user_id, order_data, current_price)
         if not is_valid:
             return None, error
         
         # Với MARKET orders, nếu không có price từ order_data, lưu current_price vào order.price
         # Điều này đảm bảo order có price trong DB để tính blocked cash và fill order sau này
+        # ATO/ATC: price = NULL (sẽ fill sau)
         order_price = order_data.price
         if order_data.order_type == "MARKET" and not order_price and current_price:
             order_price = current_price
@@ -179,7 +181,10 @@ class TradingService:
         # Xác định status ban đầu
         initial_status = "PENDING"
         
-        if not can_trade and order_data.trading_mode == "REALTIME":
+        # ATO/ATC: Luôn PENDING, không fill ngay
+        if order_data.order_type in ["ATO", "ATC"]:
+            initial_status = "PENDING"
+        elif not can_trade and order_data.trading_mode == "REALTIME":
             # Ngoài giờ giao dịch → QUEUED (chỉ cho REALTIME)
             initial_status = "QUEUED"
         elif can_trade and order_data.order_type == "MARKET" and order_data.trading_mode == "REALTIME":
@@ -189,7 +194,7 @@ class TradingService:
         # Create order với price đã được set
         order = VirtualOrderRepository.create(db, user_id, order_data_with_price, status=initial_status)
         
-        # Auto-fill MARKET orders:
+        # Auto-fill MARKET orders (không fill ATO/ATC):
         # - PRACTICE mode: LUÔN fill ngay (bỏ qua can_trade hoàn toàn)
         # - REALTIME mode: chỉ fill nếu trong giờ giao dịch (can_trade = True)
         should_fill = False
@@ -209,8 +214,9 @@ class TradingService:
                 return None, fill_error
         else:
             # Không fill ngay → Block tiền cho BUY orders ở trạng thái QUEUED/PENDING (chỉ REALTIME mode)
+            # ATO/ATC: Không block tiền ngay vì giá chưa biết, sẽ validate khi fill
             # PRACTICE mode không block vì là số dư ảo
-            if order.side == "BUY" and order.status in ["QUEUED", "PENDING"] and order.trading_mode == "REALTIME":
+            if order.side == "BUY" and order.status in ["QUEUED", "PENDING"] and order.trading_mode == "REALTIME" and order_data.order_type not in ["ATO", "ATC"]:
                 portfolio = PortfolioRepository.get_or_create_portfolio(db, user_id)
                 # Xác định giá để tính toán blocked amount
                 block_price = order.price if order.price else current_price

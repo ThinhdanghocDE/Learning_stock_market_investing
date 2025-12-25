@@ -38,34 +38,34 @@ logger = logging.getLogger(__name__)
 # Trong production, dùng Alembic migrations
 try:
     Base.metadata.create_all(bind=engine)
-    logger.info("✅ Database tables created/verified")
+    logger.info(" Database tables created/verified")
 except Exception as e:
-    logger.error(f"❌ Error creating tables: {e}")
+    logger.error(f" Error creating tables: {e}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager để start/stop background tasks"""
     # Startup: Start WebSocket monitoring task
-    logger.info("🚀 Starting WebSocket OHLC monitoring...")
+    logger.info(" Starting WebSocket OHLC monitoring...")
     try:
         monitoring_task = asyncio.create_task(start_ohlc_monitoring(ch_client, interval_seconds=5))
-        logger.info("✅ WebSocket monitoring started")
+        logger.info(" WebSocket monitoring started")
     except Exception as e:
-        logger.error(f"❌ Error starting WebSocket monitoring: {e}")
+        logger.error(f" Error starting WebSocket monitoring: {e}")
         monitoring_task = None
     
     yield
     
     # Shutdown: Cancel monitoring task
     if monitoring_task:
-        logger.info("🛑 Shutting down WebSocket monitoring...")
+        logger.info(" Shutting down WebSocket monitoring...")
         monitoring_task.cancel()
         try:
             await monitoring_task
         except asyncio.CancelledError:
             pass
-        logger.info("✅ WebSocket monitoring stopped")
+        logger.info(" WebSocket monitoring stopped")
 
 
 app = FastAPI(

@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/symbols", tags=["Symbols"])
 
 @router.get("")
 async def get_symbols(
-    limit: int = Query(None, ge=1, le=1000, description="Giới hạn số lượng symbols"),
+    limit: int = Query(None, ge=1, le=10000, description="Giới hạn số lượng symbols (None = không giới hạn)"),
     ch_client = Depends(get_clickhouse)
 ):
     """Lấy danh sách symbols từ ClickHouse"""
@@ -46,3 +46,20 @@ async def get_popular_symbols(
         "symbols": top_symbols
     }
 
+
+@router.get("/{symbol}")
+async def get_symbol_info(
+    symbol: str,
+    ch_client = Depends(get_clickhouse)
+):
+    """
+    Lấy thông tin chi tiết của một symbol
+    """
+    repo = ClickHouseRepository(ch_client)
+    info = repo.get_symbol_info(symbol.upper())
+    
+    if info:
+        return {"data": info}
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Symbol {symbol} not found")
