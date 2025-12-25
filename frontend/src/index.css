@@ -5,17 +5,35 @@
 }
 
 :root {
-  --primary-color: #2563eb;
-  --primary-hover: #1d4ed8;
-  --secondary-color: #64748b;
-  --success-color: #10b981;
-  --danger-color: #ef4444;
+  /* Primary Actions - Navy Blue (Banking/Fintech) */
+  --primary-color: #1A5490;
+  --primary-hover: #164A7A;
+  
+  /* Secondary Colors */
+  --secondary-color: #6B7280;
+  
+  /* Price Changes Only */
+  --success-color: #059669;
+  --danger-color: #DC2626;
   --warning-color: #f59e0b;
-  --bg-color: #ffffff;
-  --bg-secondary: #f8fafc;
-  --text-color: #1e293b;
-  --text-secondary: #64748b;
-  --border-color: #e2e8f0;
+  
+  /* Backgrounds */
+  --bg-color: #FFFFFF;
+  --bg-secondary: #F5F6F8;
+  --bg-panel: #FAFBFC;
+  
+  /* Text Colors */
+  --text-color: #2C3E50;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --text-label: #4B5563;
+  
+  /* Borders & Dividers */
+  --border-color: #E1E4E8;
+  --border-divider: #D1D5DB;
+  --border-input: #CBD5E1;
+  
+  /* Shadows */
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
