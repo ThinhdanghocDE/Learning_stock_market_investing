@@ -406,52 +406,29 @@ client.enable_logger()
 
 # Connect callback
 def on_connect(client, userdata, flags, rc, properties):
-    """MQTTv5 connection callback"""
     if rc == 0 and client.is_connected():
         print(" Connected to MQTT Broker!")
-        
-        # Lấy danh sách symbols từ ClickHouse
-        try:
-            symbols = CH_CLIENT.execute(
-                "SELECT symbol FROM stock_db.symbols WHERE status = 'ACTIVE' ORDER BY symbol"
-            )
-            symbol_list = [row[0] for row in symbols]
-            
-            if not symbol_list:
-                print("  No symbols found in ClickHouse. Using default: ACB")
-                symbol_list = ["ACB"]
-            
-            print(f" Subscribing to {len(symbol_list)} symbols...")
-            
-            # Subscribe to all symbols
-            for symbol in symbol_list:
-                topic = f"plaintext/quotes/krx/mdds/tick/v1/roundlot/symbol/{symbol}"
-                result, mid = client.subscribe(topic, qos=1)
-                if result == 0:
-                    print(f"    Subscribed to {symbol}")
-                else:
-                    print(f"    Failed to subscribe to {symbol}: {result}")
-            
-            print(f" Subscribed to {len(symbol_list)} symbols successfully!")
-        except Exception as e:
-            print(f"  Error getting symbols from ClickHouse: {e}")
-            print("   Using default subscription: ACB")
-            # Fallback to single symbol
-            result, mid = client.subscribe("plaintext/quotes/krx/mdds/tick/v1/roundlot/symbol/ACB", qos=1)
-            print("Subscribe result:", result, "mid:", mid)
+
+        symbol_list = sorted(list(ALLOWED_SYMBOLS))
+        print(f" Subscribing to {len(symbol_list)} symbols (fixed list)...")
+
+        for symbol in symbol_list:
+            topic = f"plaintext/quotes/krx/mdds/tick/v1/roundlot/symbol/{symbol}"
+            result, mid = client.subscribe(topic, qos=1)
+            if result == 0:
+                print(f"    Subscribed to {symbol}")
+            else:
+                print(f"    Failed to subscribe to {symbol}: {result}")
+
+        print(" Subscription completed.")
     else:
-        print(f" Failed to connect, return code {rc}\n")
+        print(f" Failed to connect, return code {rc}")
+
 
 # Message callback
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
-        
-        # ===== FILTER SYMBOL =====
-        # Chỉ lấy dữ liệu của các mã trong danh sách ALLOWED_SYMBOLS
-        symbol = payload.get("symbol", "")
-        if symbol and symbol not in ALLOWED_SYMBOLS:
-            return  # Bỏ qua nếu không phải mã được phép
         
         # ===== FILTER =====
         # Filter theo board_id và session_id (nếu là số)
