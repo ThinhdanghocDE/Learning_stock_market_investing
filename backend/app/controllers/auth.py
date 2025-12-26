@@ -115,3 +115,50 @@ async def get_current_user_info(current_user = Depends(get_current_user)):
     """Lấy thông tin user hiện tại"""
     return current_user
 
+
+# Tỷ lệ quy đổi: 1 sao = 10,000 VND
+STAR_TO_VND_RATE = 10000
+
+
+@router.post("/exchange-stars")
+async def exchange_stars_to_money(
+    stars: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Quy đổi sao ra tiền"""
+    from app.models.portfolio import Portfolio
+    
+    if stars <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Số sao phải lớn hơn 0"
+        )
+    
+    if stars > current_user.experience_points:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Bạn chỉ có {current_user.experience_points} sao"
+        )
+    
+    # Tính tiền quy đổi
+    money = stars * STAR_TO_VND_RATE
+    
+    # Trừ sao
+    current_user.experience_points -= stars
+    
+    # Cộng tiền vào portfolio
+    portfolio = db.query(Portfolio).filter(Portfolio.user_id == current_user.id).first()
+    if portfolio:
+        portfolio.cash_balance += money
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "stars_exchanged": stars,
+        "money_received": money,
+        "remaining_stars": current_user.experience_points,
+        "new_balance": float(portfolio.cash_balance) if portfolio else 0,
+        "message": f"Đã quy đổi {stars} sao thành {money:,.0f} VND"
+    }

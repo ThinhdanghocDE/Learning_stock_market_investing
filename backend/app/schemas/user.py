@@ -3,7 +3,7 @@ User Schemas (Pydantic)
 """
 
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 
@@ -27,6 +27,7 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     """Schema để trả về user info"""
     id: int
+    role: str = 'USER'
     experience_points: int
     created_at: datetime
     last_login: Optional[datetime] = None
@@ -41,6 +42,11 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=6)
 
 
+class UserRoleUpdate(BaseModel):
+    """Schema để admin cập nhật role"""
+    role: Literal['ADMIN', 'USER']
+
+
 class Token(BaseModel):
     """JWT Token response"""
     access_token: str
@@ -50,4 +56,5 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Token data"""
     username: Optional[str] = None
+
 

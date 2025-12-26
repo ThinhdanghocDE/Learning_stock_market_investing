@@ -40,13 +40,14 @@ class AdminStatsResponse(BaseModel):
 
 
 # === Helper: Check Admin ===
-# TODO: Implement proper admin role check
-# For now, we'll check if user exists
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     """Check if current user is admin"""
-    # TODO: Add proper admin check (e.g., is_admin field in User model)
-    # For now, allow all authenticated users
+    if current_user.role != 'ADMIN':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Admin mới có quyền truy cập"
+        )
     return current_user
 
 
@@ -141,6 +142,7 @@ async def admin_get_users(
             "id": u.id,
             "username": u.username,
             "email": u.email,
+            "role": u.role,
             "experience_points": u.experience_points,
             "created_at": u.created_at.isoformat() if u.created_at else None,
             "last_login": u.last_login.isoformat() if u.last_login else None
@@ -209,6 +211,45 @@ async def admin_update_user_experience(
         "id": user.id,
         "username": user.username,
         "experience_points": user.experience_points
+    }
+
+
+@router.put("/users/{user_id}/role")
+async def admin_update_user_role(
+    user_id: int,
+    role: str = Query(..., description="Role mới: ADMIN hoặc USER"),
+    admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """[Admin] Cập nhật role của user"""
+    if role not in ['ADMIN', 'USER']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role phải là 'ADMIN' hoặc 'USER'"
+        )
+    
+    user = UserRepository.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Không cho phép tự thay đổi role của chính mình
+    if user.id == admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Không thể thay đổi role của chính mình"
+        )
+    
+    user.role = role
+    db.commit()
+    
+    return {
+        "id": user.id,
+        "username": user.username,
+        "role": user.role,
+        "message": f"Đã cập nhật role thành {role}"
     }
 
 
