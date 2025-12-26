@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.controllers import auth_router, symbols_router, ohlc_router, lessons_router, portfolio_router
+from app.controllers import auth_router, symbols_router, ohlc_router, lessons_router, portfolio_router, admin_router
 from app.controllers.websocket import router as websocket_router, start_ohlc_monitoring
 from app.controllers.ai_coach import router as ai_coach_router
 from app.database import Base, engine, ch_client
@@ -100,6 +100,7 @@ app.include_router(lessons_router)
 app.include_router(portfolio_router)
 app.include_router(websocket_router)
 app.include_router(ai_coach_router)
+app.include_router(admin_router)
 
 
 @app.get("/")

@@ -7,6 +7,7 @@ from app.controllers.symbols import router as symbols_router
 from app.controllers.ohlc import router as ohlc_router
 from app.controllers.lessons import router as lessons_router
 from app.controllers.portfolio import router as portfolio_router
+from app.controllers.admin import router as admin_router
 
 __all__ = [
     "auth_router",
@@ -14,4 +15,6 @@ __all__ = [
     "ohlc_router",
     "lessons_router",
     "portfolio_router",
+    "admin_router",
 ]
+
