@@ -13,6 +13,7 @@ function Layout() {
     { path: '/trading', label: 'Giao Dịch' },
     { path: '/learning', label: 'Học Tập' },
     { path: '/portfolio', label: 'Danh Mục' },
+    { path: '/admin/lessons', label: 'Admin' },
   ]
 
   const [portfolio, setPortfolio] = useState(null)
@@ -33,7 +34,7 @@ function Layout() {
         // Không set portfolio nếu lỗi, để tránh crash
       }
     }
-    
+
     fetchPortfolio()
     // Auto-refresh mỗi 5 giây
     const interval = setInterval(fetchPortfolio, 5000)

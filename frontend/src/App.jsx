@@ -8,6 +8,7 @@ import TradingPage from './pages/Trading/TradingPage'
 import LearningPage from './pages/Learning/LearningPage'
 import LessonDetailPage from './pages/Learning/LessonDetailPage'
 import PortfolioPage from './pages/Portfolio/PortfolioPage'
+import AdminLessonsPage from './pages/Admin/AdminLessonsPage'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
         <Route path="/learning" element={<LearningPage />} />
         <Route path="/learning/:lessonId" element={<LessonDetailPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/admin/lessons" element={<AdminLessonsPage />} />
       </Route>
 
       {/* Default redirect */}
@@ -36,4 +38,5 @@ function App() {
 }
 
 export default App
+
 
