@@ -1,205 +1,422 @@
 .exchange-page {
-    max-width: 600px;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 2rem 1rem;
+    padding: 1.5rem;
 }
 
-.exchange-container {
-    background-color: var(--bg-color);
+/* Hero Section */
+.exchange-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #1e293b;
     border-radius: 1rem;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-}
-
-.exchange-header {
-    background-color: var(--primary-color);
-    color: white;
     padding: 2rem;
-    text-align: center;
+    margin-bottom: 1.5rem;
+    color: white;
 }
 
-.exchange-header h1 {
-    font-size: 1.75rem;
-    margin-bottom: 0.5rem;
+.hero-content h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
 }
 
-.exchange-header p {
-    opacity: 0.9;
+.hero-content p {
+    color: #94a3b8;
     font-size: 0.9375rem;
 }
 
-.exchange-info {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    padding: 1.5rem;
-    background-color: var(--bg-secondary);
+.hero-stats {
+    display: flex;
+    gap: 2rem;
 }
 
-.info-card {
+.hero-stat {
+    text-align: right;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    background-color: var(--bg-color);
-    border-radius: 0.5rem;
-    text-align: center;
 }
 
-.info-label {
+.hero-stat-label {
     font-size: 0.75rem;
-    color: var(--text-secondary);
+    color: #94a3b8;
     text-transform: uppercase;
-    font-weight: 500;
+    margin-bottom: 0.25rem;
 }
 
-.info-value {
-    font-size: 1.125rem;
+.hero-stat-value {
+    font-size: 1.5rem;
     font-weight: 700;
-    color: var(--text-color);
 }
 
-.info-value.stars {
-    color: var(--warning-color);
+/* Main Content - Two Columns */
+.exchange-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
 }
 
-.info-value.money {
-    color: var(--success-color);
+/* Left Column - Form */
+.exchange-form-section {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
 }
 
-.info-card.rate {
-    background-color: var(--primary-color);
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
 }
 
-.info-card.rate .info-label,
-.info-card.rate .info-value {
-    color: white;
+.section-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #f0fdf4;
+}
+
+.rate-badge {
+    background-color: #f0fdf4;
+    color: #15803d;
+    padding: 0.375rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
 .exchange-form {
-    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
-.exchange-form .form-group {
-    margin-bottom: 1rem;
-}
-
-.exchange-form label {
+.input-group label {
     display: block;
+    font-size: 0.875rem;
     font-weight: 500;
+    color: #374151;
     margin-bottom: 0.5rem;
-    color: var(--text-label);
 }
 
-.exchange-form input {
+.input-group input {
     width: 100%;
     padding: 0.875rem 1rem;
-    border: 2px solid var(--border-color);
+    border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
     font-size: 1.125rem;
     font-weight: 600;
     text-align: center;
 }
 
-.exchange-form input:focus {
+.input-group input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.preset-buttons {
+.input-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-align: right;
+    margin-top: 0.25rem;
+}
+
+.quick-amounts {
     display: flex;
     gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-bottom: 1.5rem;
 }
 
-.preset-btn {
+.amount-btn {
     flex: 1;
-    min-width: 80px;
-    padding: 0.625rem;
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-color);
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
+    background-color: white;
     border-radius: 0.375rem;
-    cursor: pointer;
+    font-size: 0.875rem;
     font-weight: 500;
-    transition: all 0.2s;
+    cursor: pointer;
+    transition: all 0.15s;
 }
 
-.preset-btn:hover:not(:disabled) {
-    border-color: var(--primary-color);
-    background-color: var(--bg-secondary);
+.amount-btn:hover:not(:disabled) {
+    border-color: #3b82f6;
+    color: #3b82f6;
 }
 
-.preset-btn:disabled {
+.amount-btn.active {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+    color: #3b82f6;
+}
+
+.amount-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
 
-.preset-btn.all {
-    background-color: var(--warning-color);
+.amount-btn.max-btn {
+    background-color: #1f2937;
+    border-color: #1f2937;
     color: white;
-    border-color: var(--warning-color);
 }
 
-.preview {
+.conversion-box {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
     padding: 1rem;
-    background-color: var(--bg-secondary);
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
 }
 
-.preview-money {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--success-color);
+.conversion-item {
+    flex: 1;
+    text-align: center;
 }
 
-.message {
+.conv-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+}
+
+.conv-value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.conv-value.from {
+    color: #1f2937;
+}
+
+.conv-value.to {
+    color: #059669;
+}
+
+.conversion-arrow {
+    color: #9ca3af;
+    padding: 0 1rem;
+}
+
+.form-message {
     padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
     font-weight: 500;
 }
 
-.message.success {
-    background-color: #d1fae5;
+.form-message.success {
+    background-color: #ecfdf5;
     color: #065f46;
 }
 
-.message.error {
-    background-color: #fee2e2;
+.form-message.error {
+    background-color: #fef2f2;
     color: #991b1b;
 }
 
-.exchange-btn {
+.submit-btn {
     width: 100%;
-    padding: 1rem;
-    background-color: var(--primary-color);
+    padding: 0.875rem;
+    background-color: #3b82f6;
     color: white;
     border: none;
     border-radius: 0.5rem;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.15s;
 }
 
-.exchange-btn:hover:not(:disabled) {
-    background-color: var(--primary-hover);
+.submit-btn:hover:not(:disabled) {
+    background-color: #2563eb;
 }
 
-.exchange-btn:disabled {
-    opacity: 0.6;
+.submit-btn:disabled {
+    background-color: #9ca3af;
     cursor: not-allowed;
 }
 
-@media (max-width: 600px) {
-    .exchange-info {
+/* Right Column - Info Cards */
+.exchange-info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-card {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 1.25rem;
+}
+
+.info-card h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+/* Steps */
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.step-number {
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.step-content strong {
+    display: block;
+    font-size: 0.875rem;
+    color: #1f2937;
+    margin-bottom: 0.125rem;
+}
+
+.step-content p {
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+/* Milestones */
+.milestones {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.milestone {
+    padding: 0.75rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+}
+
+.milestone.achieved {
+    background-color: #ecfdf5;
+}
+
+.milestone-progress {
+    height: 4px;
+    background-color: #e5e7eb;
+    border-radius: 2px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.milestone-bar {
+    height: 100%;
+    background-color: #3b82f6;
+    border-radius: 2px;
+    transition: width 0.3s;
+}
+
+.milestone.achieved .milestone-bar {
+    background-color: #10b981;
+}
+
+.milestone-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+.milestone-stars {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.milestone-reward {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #059669;
+}
+
+.milestone-desc {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+/* Tips */
+.tips-card {
+    background-color: #fffbeb;
+}
+
+.tips-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tips-list li {
+    position: relative;
+    padding-left: 1.25rem;
+    font-size: 0.8125rem;
+    color: #78350f;
+    margin-bottom: 0.5rem;
+}
+
+.tips-list li:last-child {
+    margin-bottom: 0;
+}
+
+.tips-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .exchange-hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.5rem;
+    }
+
+    .hero-stats {
+        justify-content: center;
+    }
+
+    .hero-stat {
+        text-align: center;
+    }
+
+    .exchange-main {
         grid-template-columns: 1fr;
+    }
+
+    .quick-amounts {
+        flex-wrap: wrap;
+    }
+
+    .amount-btn {
+        min-width: calc(50% - 0.25rem);
     }
 }

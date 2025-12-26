@@ -9,11 +9,21 @@ function ExchangePage() {
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState(null)
     const [portfolio, setPortfolio] = useState(null)
+    const [history, setHistory] = useState([])
+    const [activeTab, setActiveTab] = useState('exchange')
 
     const RATE = 10000 // 1 sao = 10,000 VND
 
+    // Milestones rewards info
+    const milestones = [
+        { stars: 1000, reward: '10,000,000 VND', description: 'Hoàn thành 1 khóa học' },
+        { stars: 5000, reward: '50,000,000 VND', description: 'Chinh phục cấp trung bình' },
+        { stars: 10000, reward: '100,000,000 VND', description: 'Trở thành chuyên gia' },
+    ]
+
     useEffect(() => {
         fetchPortfolio()
+        fetchHistory()
     }, [])
 
     const fetchPortfolio = async () => {
@@ -23,6 +33,14 @@ function ExchangePage() {
         } catch (error) {
             console.error('Error fetching portfolio:', error)
         }
+    }
+
+    const fetchHistory = async () => {
+        // Mock history data - in real app, fetch from API
+        setHistory([
+            // { id: 1, stars: 500, money: 5000000, date: '2024-12-25' },
+            // { id: 2, stars: 1000, money: 10000000, date: '2024-12-20' },
+        ])
     }
 
     const handleExchange = async (e) => {
@@ -46,7 +64,6 @@ function ExchangePage() {
             const response = await api.post(`/auth/exchange-stars?stars=${starsNum}`)
             setMessage({ type: 'success', text: response.data.message })
             setStars('')
-            // Refresh user data và portfolio
             await checkAuth()
             await fetchPortfolio()
         } catch (error) {
@@ -59,89 +76,171 @@ function ExchangePage() {
         }
     }
 
-    const presetAmounts = [100, 500, 1000, 5000]
+    const presetAmounts = [100, 500, 1000]
     const starsNum = parseInt(stars) || 0
     const moneyPreview = starsNum * RATE
+    const currentStars = user?.experience_points || 0
 
     return (
         <div className="exchange-page">
-            <div className="exchange-container">
-                <div className="exchange-header">
-                    <h1>⭐ Quy đổi Sao</h1>
-                    <p>Đổi sao thành tiền mặt để giao dịch</p>
+            {/* Hero Section */}
+            <div className="exchange-hero">
+                <div className="hero-content">
+                    <h1>Trung tâm quy đổi</h1>
+                    <p>Biến kiến thức thành tài sản thực</p>
                 </div>
-
-                <div className="exchange-info">
-                    <div className="info-card">
-                        <span className="info-label">Số sao hiện có</span>
-                        <span className="info-value stars">⭐ {user?.experience_points?.toLocaleString() || 0}</span>
+                <div className="hero-stats">
+                    <div className="hero-stat">
+                        <span className="hero-stat-label">Sao hiện có</span>
+                        <span className="hero-stat-value">{currentStars.toLocaleString()}</span>
                     </div>
-                    <div className="info-card">
-                        <span className="info-label">Số dư hiện tại</span>
-                        <span className="info-value money">{parseFloat(portfolio?.cash_balance || 0).toLocaleString('vi-VN')} VND</span>
-                    </div>
-                    <div className="info-card rate">
-                        <span className="info-label">Tỷ lệ quy đổi</span>
-                        <span className="info-value">1 ⭐ = {RATE.toLocaleString()} VND</span>
+                    <div className="hero-stat">
+                        <span className="hero-stat-label">Số dư (VND)</span>
+                        <span className="hero-stat-value">{parseFloat(portfolio?.cash_balance || 0).toLocaleString('vi-VN')}</span>
                     </div>
                 </div>
+            </div>
 
-                <form onSubmit={handleExchange} className="exchange-form">
-                    <div className="form-group">
-                        <label>Số sao muốn đổi</label>
-                        <input
-                            type="number"
-                            value={stars}
-                            onChange={(e) => setStars(e.target.value)}
-                            placeholder="Nhập số sao"
-                            min="1"
-                            max={user?.experience_points || 0}
-                        />
+            {/* Main Content */}
+            <div className="exchange-main">
+                {/* Left Column - Exchange Form */}
+                <div className="exchange-form-section">
+                    <div className="section-header">
+                        <h2>Quy đổi ngay</h2>
+                        <span className="rate-badge">1 sao = {RATE.toLocaleString()} VND</span>
                     </div>
 
-                    <div className="preset-buttons">
-                        {presetAmounts.map(amount => (
+                    <form onSubmit={handleExchange} className="exchange-form">
+                        <div className="input-group">
+                            <label>Số sao muốn đổi</label>
+                            <input
+                                type="number"
+                                value={stars}
+                                onChange={(e) => setStars(e.target.value)}
+                                placeholder="Nhập số sao"
+                                min="1"
+                                max={currentStars}
+                            />
+                            <div className="input-hint">Tối đa: {currentStars.toLocaleString()} sao</div>
+                        </div>
+
+                        <div className="quick-amounts">
+                            {presetAmounts.map(amount => (
+                                <button
+                                    key={amount}
+                                    type="button"
+                                    className={`amount-btn ${stars === amount.toString() ? 'active' : ''}`}
+                                    onClick={() => setStars(amount.toString())}
+                                    disabled={amount > currentStars}
+                                >
+                                    {amount.toLocaleString()}
+                                </button>
+                            ))}
                             <button
-                                key={amount}
                                 type="button"
-                                className="preset-btn"
-                                onClick={() => setStars(amount.toString())}
-                                disabled={amount > (user?.experience_points || 0)}
+                                className={`amount-btn max-btn ${stars === currentStars.toString() ? 'active' : ''}`}
+                                onClick={() => setStars(currentStars.toString())}
+                                disabled={!currentStars}
                             >
-                                {amount.toLocaleString()} ⭐
+                                Tất cả
                             </button>
-                        ))}
+                        </div>
+
+                        {starsNum > 0 && (
+                            <div className="conversion-box">
+                                <div className="conversion-item">
+                                    <span className="conv-label">Đổi</span>
+                                    <span className="conv-value from">{starsNum.toLocaleString()} sao</span>
+                                </div>
+                                <div className="conversion-arrow">→</div>
+                                <div className="conversion-item">
+                                    <span className="conv-label">Nhận</span>
+                                    <span className="conv-value to">{moneyPreview.toLocaleString()} VND</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {message && (
+                            <div className={`form-message ${message.type}`}>
+                                {message.text}
+                            </div>
+                        )}
+
                         <button
-                            type="button"
-                            className="preset-btn all"
-                            onClick={() => setStars((user?.experience_points || 0).toString())}
-                            disabled={!user?.experience_points}
+                            type="submit"
+                            className="submit-btn"
+                            disabled={loading || !starsNum || starsNum > currentStars}
                         >
-                            Tất cả
+                            {loading ? 'Đang xử lý...' : 'Xác nhận quy đổi'}
                         </button>
+                    </form>
+                </div>
+
+                {/* Right Column - Info */}
+                <div className="exchange-info-section">
+                    {/* How it works */}
+                    <div className="info-card">
+                        <h3>Cách thức hoạt động</h3>
+                        <div className="steps">
+                            <div className="step">
+                                <div className="step-number">1</div>
+                                <div className="step-content">
+                                    <strong>Học và kiếm sao</strong>
+                                    <p>Hoàn thành các bài học để nhận sao thưởng</p>
+                                </div>
+                            </div>
+                            <div className="step">
+                                <div className="step-number">2</div>
+                                <div className="step-content">
+                                    <strong>Quy đổi sao</strong>
+                                    <p>Chuyển sao thành tiền mặt theo tỷ lệ cố định</p>
+                                </div>
+                            </div>
+                            <div className="step">
+                                <div className="step-number">3</div>
+                                <div className="step-content">
+                                    <strong>Giao dịch</strong>
+                                    <p>Sử dụng tiền để thực hành giao dịch chứng khoán</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    {starsNum > 0 && (
-                        <div className="preview">
-                            <span>Bạn sẽ nhận được:</span>
-                            <span className="preview-money">{moneyPreview.toLocaleString()} VND</span>
+                    {/* Milestones */}
+                    <div className="info-card">
+                        <h3>Mục tiêu phần thưởng</h3>
+                        <div className="milestones">
+                            {milestones.map((milestone, index) => (
+                                <div
+                                    key={index}
+                                    className={`milestone ${currentStars >= milestone.stars ? 'achieved' : ''}`}
+                                >
+                                    <div className="milestone-progress">
+                                        <div
+                                            className="milestone-bar"
+                                            style={{ width: `${Math.min(100, (currentStars / milestone.stars) * 100)}%` }}
+                                        />
+                                    </div>
+                                    <div className="milestone-info">
+                                        <span className="milestone-stars">{milestone.stars.toLocaleString()} sao</span>
+                                        <span className="milestone-reward">{milestone.reward}</span>
+                                    </div>
+                                    <p className="milestone-desc">{milestone.description}</p>
+                                </div>
+                            ))}
                         </div>
-                    )}
+                    </div>
 
-                    {message && (
-                        <div className={`message ${message.type}`}>
-                            {message.text}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        className="exchange-btn"
-                        disabled={loading || !starsNum || starsNum > (user?.experience_points || 0)}
-                    >
-                        {loading ? 'Đang xử lý...' : 'Quy đổi ngay'}
-                    </button>
-                </form>
+                    {/* Tips */}
+                    <div className="info-card tips-card">
+                        <h3>Mẹo tích lũy sao</h3>
+                        <ul className="tips-list">
+                            <li>Hoàn thành quiz với điểm cao để nhận nhiều sao hơn</li>
+                            <li>Học đều đặn mỗi ngày để duy trì streak</li>
+                            <li>Thử thách bản thân với các bài học nâng cao</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     )
