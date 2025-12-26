@@ -283,7 +283,7 @@ async def admin_get_lesson_stats(
 ):
     """[Admin] Lấy thống kê theo bài học"""
     from app.models.lesson import Lesson, LessonProgress
-    from sqlalchemy import func
+    from sqlalchemy import func, case
     
     # Get completion stats per lesson
     lesson_stats = db.query(
@@ -292,7 +292,10 @@ async def admin_get_lesson_stats(
         Lesson.difficulty_level,
         func.count(LessonProgress.id).label("total_attempts"),
         func.sum(
-            func.cast(LessonProgress.status == "COMPLETED", db.bind.dialect.type_descriptor(type(1)))
+            case(
+                (LessonProgress.status == "COMPLETED", 1),
+                else_=0
+            )
         ).label("completions"),
         func.avg(LessonProgress.quiz_score).label("avg_quiz_score")
     ).outerjoin(
@@ -307,8 +310,127 @@ async def admin_get_lesson_stats(
             "title": stat.title,
             "difficulty_level": stat.difficulty_level,
             "total_attempts": stat.total_attempts or 0,
-            "completions": stat.completions or 0,
+            "completions": int(stat.completions or 0),
             "avg_quiz_score": round(float(stat.avg_quiz_score or 0), 2)
         }
         for stat in lesson_stats
     ]
+
+
+@router.get("/stats/trading")
+async def admin_get_trading_stats(
+    admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """[Admin] Lấy thống kê giao dịch"""
+    from app.models.portfolio import VirtualOrder, Portfolio
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    
+    # Total orders
+    total_orders = db.query(VirtualOrder).count()
+    filled_orders = db.query(VirtualOrder).filter(VirtualOrder.status == "FILLED").count()
+    
+    # Total trading value (sum of filled_price * filled_quantity)
+    total_value_result = db.query(
+        func.sum(VirtualOrder.filled_price * VirtualOrder.filled_quantity)
+    ).filter(VirtualOrder.status == "FILLED").scalar()
+    total_trading_value = float(total_value_result or 0)
+    
+    # New users this month
+    first_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    new_users_month = db.query(User).filter(User.created_at >= first_of_month).count()
+    
+    # Active traders (users with at least 1 order)
+    active_traders = db.query(func.count(func.distinct(VirtualOrder.user_id))).scalar() or 0
+    
+    return {
+        "total_orders": total_orders,
+        "filled_orders": filled_orders,
+        "total_trading_value": total_trading_value,
+        "new_users_month": new_users_month,
+        "active_traders": active_traders
+    }
+
+
+@router.get("/stats/leaderboard")
+async def admin_get_leaderboard(
+    admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+    limit: int = Query(10, ge=1, le=50)
+):
+    """[Admin] Lấy bảng xếp hạng top traders theo lợi nhuận"""
+    from app.models.portfolio import Portfolio
+    from sqlalchemy import desc
+    
+    # Get top portfolios by total_value (profit = total_value - initial 10M)
+    INITIAL_BALANCE = 10000000  # 10M VND
+    
+    top_portfolios = db.query(
+        Portfolio.user_id,
+        Portfolio.total_value,
+        Portfolio.cash_balance,
+        User.username
+    ).join(User, Portfolio.user_id == User.id).order_by(
+        desc(Portfolio.total_value)
+    ).limit(limit).all()
+    
+    return [
+        {
+            "rank": idx + 1,
+            "user_id": p.user_id,
+            "username": p.username,
+            "total_value": float(p.total_value),
+            "profit": float(p.total_value) - INITIAL_BALANCE,
+            "profit_percent": round((float(p.total_value) - INITIAL_BALANCE) / INITIAL_BALANCE * 100, 2)
+        }
+        for idx, p in enumerate(top_portfolios)
+    ]
+
+
+@router.get("/stats/popular-stocks")
+async def admin_get_popular_stocks(
+    admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+    limit: int = Query(10, ge=1, le=50)
+):
+    """[Admin] Lấy danh sách mã cổ phiếu được giao dịch nhiều nhất"""
+    from app.models.portfolio import VirtualOrder
+    from sqlalchemy import func, desc, case
+    
+    # Get most traded stocks
+    popular_stocks = db.query(
+        VirtualOrder.symbol,
+        func.count(VirtualOrder.id).label("total_orders"),
+        func.sum(VirtualOrder.filled_quantity).label("total_volume"),
+        func.sum(
+            case(
+                (VirtualOrder.side == "BUY", 1),
+                else_=0
+            )
+        ).label("buy_orders"),
+        func.sum(
+            case(
+                (VirtualOrder.side == "SELL", 1),
+                else_=0
+            )
+        ).label("sell_orders")
+    ).filter(
+        VirtualOrder.status == "FILLED"
+    ).group_by(
+        VirtualOrder.symbol
+    ).order_by(
+        desc("total_orders")
+    ).limit(limit).all()
+    
+    return [
+        {
+            "symbol": stock.symbol,
+            "total_orders": stock.total_orders,
+            "total_volume": int(stock.total_volume or 0),
+            "buy_orders": int(stock.buy_orders or 0),
+            "sell_orders": int(stock.sell_orders or 0)
+        }
+        for stock in popular_stocks
+    ]
+

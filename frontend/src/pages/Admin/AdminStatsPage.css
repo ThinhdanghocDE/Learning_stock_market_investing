@@ -1,0 +1,239 @@
+.admin-stats-page {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.stats-header {
+    margin-bottom: 2rem;
+}
+
+.stats-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.stats-header p {
+    color: #64748b;
+}
+
+.stats-loading,
+.stats-error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    font-size: 1.125rem;
+    color: #64748b;
+}
+
+.stats-error {
+    color: #ef4444;
+}
+
+/* Overview Cards */
+.stats-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card.highlight {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    border: none;
+}
+
+.stat-card.highlight .stat-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.admin-stats-page .stat-value {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #1e293b;
+}
+
+.stat-card.highlight .stat-value {
+    color: white;
+}
+
+.admin-stats-page .stat-label {
+    font-size: 0.875rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+/* Two Column Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Stats Section */
+.stats-section {
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+}
+
+.stats-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.stats-section h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-chart-container {
+    height: 280px;
+    width: 100%;
+    background-color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+/* Stats Table */
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.stats-table th,
+.stats-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.stats-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    background-color: #f8fafc;
+}
+
+.stats-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Leaderboard Specific */
+.rank {
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.username {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.profit.positive {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.profit.negative {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Popular Stocks Specific */
+.symbol {
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.buy-count {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.sell-count {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Lesson Stats Specific */
+.lesson-title {
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.difficulty {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.difficulty.BEGINNER {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.difficulty.INTERMEDIATE {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.difficulty.ADVANCED {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.no-data {
+    text-align: center;
+    color: #94a3b8;
+    font-style: italic;
+    padding: 2rem !important;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .stats-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .stats-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-stats-page {
+        padding: 1rem;
+    }
+}
