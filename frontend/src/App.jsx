@@ -14,6 +14,7 @@ import ExchangePage from './pages/Exchange/ExchangePage'
 import AdminHomepagePage from './pages/Admin/AdminHomepagePage'
 import AdminLessonsPage from './pages/Admin/AdminLessonsPage'
 import AdminUsersPage from './pages/Admin/AdminUsersPage'
+import AdminStatsPage from './pages/Admin/AdminStatsPage'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
 
 function App() {
@@ -22,13 +23,13 @@ function App() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Homepage />} />
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />} />
-      <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <RegisterPage />} />
+      <Route path="/" element={isAuthenticated ? <Navigate to="/trading" /> : <Homepage />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/trading" /> : <LoginPage />} />
+      <Route path="/register" element={isAuthenticated ? <Navigate to="/trading" /> : <RegisterPage />} />
 
       {/* Protected routes - User Layout */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<Navigate to="/trading" />} /> {/* Tạm ẩn Dashboard */}
         <Route path="/trading" element={<TradingPage />} />
         <Route path="/learning" element={<LearningPage />} />
         <Route path="/learning/:lessonId" element={<LessonDetailPage />} />
@@ -41,7 +42,7 @@ function App() {
         <Route path="/admin/homepage" element={<AdminHomepagePage />} />
         <Route path="/admin/lessons" element={<AdminLessonsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
-        <Route path="/admin/stats" element={<div className="admin-page"><h1>Thống kê</h1><p>Đang phát triển...</p></div>} />
+        <Route path="/admin/stats" element={<AdminStatsPage />} />
         <Route path="/admin" element={<Navigate to="/admin/lessons" />} />
       </Route>
 

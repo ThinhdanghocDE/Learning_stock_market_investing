@@ -9,7 +9,7 @@ function Layout() {
   const { user, logout } = useAuthStore()
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard' },
+    // { path: '/dashboard', label: 'Dashboard' }, // Tạm ẩn
     { path: '/trading', label: 'Giao Dịch' },
     { path: '/learning', label: 'Học Tập' },
     { path: '/portfolio', label: 'Danh Mục' },
