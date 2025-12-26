@@ -2254,12 +2254,14 @@ function TradingPage() {
     <div className="trading-page">
       <div className="page-header">
         <h1 className="page-title">Giao Dịch</h1>
+        {/* Tạm ẩn AI Coach button
         <button
           className="ai-coach-toggle-btn"
           onClick={() => setAiCoachOpen(!aiCoachOpen)}
         >
           {aiCoachOpen ? 'Đóng AI Coach' : 'Mở AI Coach'}
         </button>
+        */}
       </div>
 
       <div className="trading-controls">
