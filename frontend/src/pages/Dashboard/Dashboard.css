@@ -11,11 +11,12 @@
 }
 
 .welcome-section {
-  background: linear-gradient(135deg, var(--primary-color) 0%, #764ba2 100%);
+  background-color: var(--primary-color);
   color: white;
   padding: 2rem;
-  border-radius: 1rem;
+  border-radius: 0.5rem;
   margin-bottom: 2rem;
+  border: 1px solid var(--primary-hover);
 }
 
 .welcome-section h2 {
@@ -100,4 +101,3 @@
   padding: 2rem;
   color: var(--text-secondary);
 }
-
