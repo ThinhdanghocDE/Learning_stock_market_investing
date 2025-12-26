@@ -13,8 +13,13 @@ function Layout() {
     { path: '/trading', label: 'Giao Dịch' },
     { path: '/learning', label: 'Học Tập' },
     { path: '/portfolio', label: 'Danh Mục' },
-    { path: '/admin/lessons', label: 'Admin' },
+    { path: '/exchange', label: 'Đổi Sao' },
   ]
+
+  // Thêm menu Admin nếu user là ADMIN
+  if (user?.role === 'ADMIN') {
+    navItems.push({ path: '/admin/lessons', label: 'Admin' })
+  }
 
   const [portfolio, setPortfolio] = useState(null)
 
@@ -45,13 +50,13 @@ function Layout() {
     <div className="layout">
       <header className="header">
         <div className="header-content">
-          <h1 className="logo">Stock Learning</h1>
+          <h1 className="logo">Mindvest Learn</h1>
           <nav className="nav">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+                className={`nav-link ${location.pathname.startsWith(item.path) ? 'active' : ''}`}
               >
                 {item.label}
               </Link>
@@ -61,21 +66,23 @@ function Layout() {
             {portfolio && (
               <div className="balance-info">
                 <span className="balance-item">
-                  <span className="balance-label">Tiền mặt:</span>
-                  <span className="balance-value">{parseFloat(portfolio.cash_balance || 0).toLocaleString('vi-VN')} VNĐ</span>
+                  <span className="balance-label">Số dư:</span>
+                  <span className="balance-value">{parseFloat(portfolio.cash_balance || 0).toLocaleString('vi-VN')}</span>
                 </span>
                 <span className="balance-item">
-                  <span className="balance-label">Đã phong tỏa:</span>
-                  <span className="balance-value">{parseFloat(portfolio.blocked_cash || 0).toLocaleString('vi-VN')} VNĐ</span>
+                  <span className="balance-label">Phong tỏa:</span>
+                  <span className="balance-value blocked">{parseFloat(portfolio.blocked_cash || 0).toLocaleString('vi-VN')}</span>
                 </span>
                 <span className="balance-item">
                   <span className="balance-label">Khả dụng:</span>
-                  <span className="balance-value available">{parseFloat((portfolio.cash_balance || 0) - (portfolio.blocked_cash || 0)).toLocaleString('vi-VN')} VNĐ</span>
+                  <span className="balance-value available">{parseFloat((portfolio.cash_balance || 0) - (portfolio.blocked_cash || 0)).toLocaleString('vi-VN')}</span>
                 </span>
               </div>
             )}
-            <span className="username">{user?.username}</span>
-            <span className="points">{user?.experience_points || 0} điểm</span>
+            <div className="user-info">
+              <span className="username">{user?.username}</span>
+              <span className="points">⭐ {user?.experience_points || 0}</span>
+            </div>
             <button onClick={logout} className="logout-btn">
               Đăng xuất
             </button>
