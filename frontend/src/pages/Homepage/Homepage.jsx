@@ -28,6 +28,14 @@ function Homepage() {
         stat_3_value: "24/7",
         stat_3_label: "AI hỗ trợ"
     })
+    const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+
+    const handleContactSubmit = (e) => {
+        e.preventDefault()
+        setShowSuccessPopup(true)
+        e.target.reset()
+        setTimeout(() => setShowSuccessPopup(false), 3000)
+    }
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -45,17 +53,22 @@ function Homepage() {
 
     return (
         <div className="homepage">
+            {/* Success Popup */}
+            {showSuccessPopup && (
+                <div className="success-popup-overlay">
+                    <div className="success-popup">
+                        <div className="success-icon">✓</div>
+                        <h3>Gửi yêu cầu thành công!</h3>
+                        <p>Chúng tôi sẽ liên hệ với bạn trong 24h.</p>
+                    </div>
+                </div>
+            )}
+
             {/* Homepage Header */}
             <header className="homepage-header">
                 <div className="header-container">
                     <div className="logo">Mindvest Learn</div>
                     <nav className="header-nav">
-                        {!isAuthenticated && (
-                            <>
-                                <Link to="/login" className="nav-item">Đăng nhập</Link>
-                                <Link to="/register" className="nav-btn">Bắt đầu ngay</Link>
-                            </>
-                        )}
                         {isAuthenticated && (
                             <Link to="/dashboard" className="nav-btn">Vào Dashboard</Link>
                         )}
@@ -122,21 +135,8 @@ function Homepage() {
                             ))}
                         </Swiper>
                     ) : (
-                        <div className="chart-preview">
-                            <div className="chart-header">
-                                <span className="symbol">VNM</span>
-                                <span className="price up">85,200 <small>+2.4%</small></span>
-                            </div>
-                            <div className="chart-placeholder">
-                                <svg viewBox="0 0 400 150" className="chart-line">
-                                    <polyline
-                                        fill="none"
-                                        stroke="#10b981"
-                                        strokeWidth="2"
-                                        points="0,120 40,100 80,110 120,80 160,90 200,60 240,70 280,40 320,50 360,30 400,45"
-                                    />
-                                </svg>
-                            </div>
+                        <div className="hero-image-container">
+                            <img src="/images/hero_trading.png" alt="Stock Trading Dashboard" className="hero-image" />
                         </div>
                     )}
                 </div>
@@ -145,22 +145,23 @@ function Homepage() {
             {/* AI Section */}
             <section className="ai-section">
                 <div className="section-header">
-                    <h2>🤖 AI Mentor cá nhân</h2>
-                    <p>Không chỉ là công cụ, mà là người hướng dẫn thông minh</p>
+                    <span className="section-badge">AI-Powered</span>
+                    <h2>AI Mentor cá nhân</h2>
+                    <p>Không chỉ là công cụ, mà là người hướng dẫn thông minh đồng hành cùng bạn</p>
                 </div>
                 <div className="ai-features">
                     <div className="feature-card">
-                        <div className="feature-icon">📊</div>
+                        <div className="feature-number">01</div>
                         <h3>Phân tích cổ phiếu</h3>
                         <p>AI đọc hiểu biểu đồ, chỉ số tài chính và đưa ra nhận định khách quan về từng mã cổ phiếu bạn quan tâm.</p>
                     </div>
                     <div className="feature-card">
-                        <div className="feature-icon">💬</div>
+                        <div className="feature-number">02</div>
                         <h3>Nhận xét giao dịch</h3>
                         <p>Mỗi lệnh mua/bán bạn đặt, AI sẽ phân tích và cho bạn biết quyết định đó hợp lý hay cần cân nhắc lại.</p>
                     </div>
                     <div className="feature-card">
-                        <div className="feature-icon">🎯</div>
+                        <div className="feature-number">03</div>
                         <h3>Tránh FOMO</h3>
                         <p>AI giúp bạn nhận ra khi nào đang bị cảm xúc chi phối, từ đó đưa ra quyết định đầu tư lý trí hơn.</p>
                     </div>
@@ -171,7 +172,8 @@ function Homepage() {
             <section className="trading-section">
                 <div className="trading-content">
                     <div className="trading-text">
-                        <h2>💰 Thực hành không lo mất tiền</h2>
+                        <span className="section-badge">Paper Trading</span>
+                        <h2>Thực hành không lo mất tiền</h2>
                         <p className="trading-desc">
                             Sử dụng 10 triệu tiền ảo để giao dịch với dữ liệu giá cổ phiếu thật
                             từ thị trường Việt Nam. Học từ thực tế, không phải lý thuyết suông.
@@ -225,7 +227,8 @@ function Homepage() {
             {/* Learning Section */}
             <section className="learning-section">
                 <div className="section-header">
-                    <h2>📚 Học từ sai lầm, không phải từ tiền thật</h2>
+                    <span className="section-badge">Learning Path</span>
+                    <h2>Học từ sai lầm, không phải từ tiền thật</h2>
                     <p>Mỗi giao dịch là một bài học. AI giúp bạn rút kinh nghiệm và tiến bộ mỗi ngày.</p>
                 </div>
                 <div className="learning-cards">
@@ -305,9 +308,60 @@ function Homepage() {
                 </div>
             </section>
 
+            {/* Contact Section */}
+            <section className="contact-section">
+                <div className="contact-container">
+                    <div className="contact-info">
+                        <span className="section-badge">Liên hệ</span>
+                        <h2>Hợp tác quảng cáo</h2>
+                        <p>
+                            Bạn muốn quảng bá sản phẩm/dịch vụ tài chính đến cộng đồng nhà đầu tư?
+                            Hãy để lại thông tin, chúng tôi sẽ liên hệ trong 24h.
+                        </p>
+                        <div className="contact-details">
+                            <div className="contact-item">
+                                <span className="contact-label">Email</span>
+                                <span className="contact-value">vuthinh122004@gmail.com</span>
+                            </div>
+                            <div className="contact-item">
+                                <span className="contact-label">Hotline</span>
+                                <span className="contact-value">0582676098</span>
+                            </div>
+                        </div>
+                    </div>
+                    <form className="contact-form" onSubmit={handleContactSubmit}>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label htmlFor="fullname">Họ và tên *</label>
+                                <input type="text" id="fullname" />
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="company">Công ty</label>
+                                <input type="text" id="company" placeholder="Tên công ty" />
+                            </div>
+                        </div>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label htmlFor="email">Email *</label>
+                                <input type="email" id="email" />
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="phone">Số điện thoại *</label>
+                                <input type="tel" id="phone" />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="message">Nội dung *</label>
+                            <textarea id="message" rows="4" placeholder="Mô tả nhu cầu quảng cáo của bạn..." required></textarea>
+                        </div>
+                        <button type="submit" className="btn-submit">Gửi yêu cầu</button>
+                    </form>
+                </div>
+            </section>
+
             {/* Footer */}
             <footer className="homepage-footer">
-                <p>© 2024 Mindvest Learn. Nền tảng thực hành đầu tư chứng khoán thông minh.</p>
+                <p>© 2025 Mindvest Learn. Nền tảng thực hành đầu tư chứng khoán thông minh.</p>
             </footer>
         </div>
     )
