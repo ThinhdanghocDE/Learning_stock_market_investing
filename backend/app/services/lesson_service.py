@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from app.repositories.lesson_repository import LessonRepository
 from app.repositories.user_repository import UserRepository
 from app.models.lesson import Lesson, LessonProgress
-from typing import Optional, Dict
+from app.schemas.lesson import LessonCreate, LessonUpdate, QuizSubmission, QuizResult
+from typing import Optional, Dict, List, Any
 
 
 class LessonService:
@@ -97,6 +98,72 @@ class LessonService:
         return progress, None
     
     @staticmethod
+    def submit_quiz(
+        db: Session,
+        user_id: int,
+        lesson_id: int,
+        submission: QuizSubmission
+    ) -> tuple[Optional[QuizResult], Optional[str]]:
+        """
+        Nộp quiz và tính điểm
+        Returns: (quiz_result, error_message)
+        """
+        lesson = LessonRepository.get_by_id(db, lesson_id)
+        if not lesson:
+            return None, "Lesson not found"
+        
+        if not lesson.quiz_data:
+            return None, "This lesson has no quiz"
+        
+        quiz_data = lesson.quiz_data
+        questions = quiz_data.get("questions", [])
+        passing_score = quiz_data.get("passing_score", 8)
+        
+        if not questions:
+            return None, "Quiz has no questions"
+        
+        # Tính điểm
+        correct_count = 0
+        correct_answers = []
+        explanations = []
+        
+        for i, question in enumerate(questions):
+            correct_answer = question.get("correct_answer", 0)
+            correct_answers.append(correct_answer)
+            explanations.append(question.get("explanation"))
+            
+            # Kiểm tra đáp án của user
+            if i < len(submission.answers):
+                if submission.answers[i] == correct_answer:
+                    correct_count += 1
+        
+        # Kiểm tra pass/fail
+        passed = correct_count >= passing_score
+        
+        # Tính sao thưởng - chỉ cộng nếu pass lần đầu (chưa từng pass)
+        progress = LessonService.get_or_create_progress(db, user_id, lesson_id)
+        is_first_pass = passed and not progress.quiz_passed and progress.stars_earned == 0
+        stars_earned = lesson.stars_reward if is_first_pass else 0
+        
+        # Cập nhật progress
+        progress = LessonRepository.update_quiz_progress(
+            db, progress, correct_count, passed, lesson.stars_reward if is_first_pass else 0
+        )
+        
+        # Cộng experience points nếu pass lần đầu
+        if is_first_pass:
+            UserRepository.update_experience_points(db, user_id, stars_earned)
+        
+        return QuizResult(
+            score=correct_count,
+            total=len(questions),
+            passed=passed,
+            stars_earned=stars_earned,
+            correct_answers=correct_answers,
+            explanations=explanations
+        ), None
+    
+    @staticmethod
     def get_lesson_with_progress(
         db: Session,
         user_id: int,
@@ -156,4 +223,34 @@ class LessonService:
             "end_time": lesson.chart_end_time,
             "interval": lesson.chart_interval or "1m"
         }
-
+    
+    # === Admin Methods ===
+    
+    @staticmethod
+    def create_lesson(db: Session, lesson_data: LessonCreate) -> Lesson:
+        """Tạo lesson mới (Admin)"""
+        return LessonRepository.create(db, lesson_data)
+    
+    @staticmethod
+    def update_lesson(
+        db: Session,
+        lesson_id: int,
+        lesson_data: LessonUpdate
+    ) -> tuple[Optional[Lesson], Optional[str]]:
+        """Cập nhật lesson (Admin)"""
+        lesson = LessonRepository.get_by_id(db, lesson_id)
+        if not lesson:
+            return None, "Lesson not found"
+        
+        lesson = LessonRepository.update(db, lesson, lesson_data)
+        return lesson, None
+    
+    @staticmethod
+    def delete_lesson(db: Session, lesson_id: int) -> tuple[bool, Optional[str]]:
+        """Xóa lesson (Admin)"""
+        lesson = LessonRepository.get_by_id(db, lesson_id)
+        if not lesson:
+            return False, "Lesson not found"
+        
+        LessonRepository.delete(db, lesson)
+        return True, None
