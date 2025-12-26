@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { createChart } from 'lightweight-charts'
 import { getWebSocketClient } from '../../utils/websocket'
 import { useAuthStore } from '../../stores/authStore'
@@ -8,6 +9,7 @@ import AICoach from '../../components/AICoach/AICoach'
 import './Trading.css'
 
 function TradingPage() {
+  const navigate = useNavigate()
   const { token } = useAuthStore()
   const [symbol, setSymbol] = useState('ACB')
   const [symbols, setSymbols] = useState([])
@@ -2670,27 +2672,8 @@ function TradingPage() {
                     <span>{(portfolio ? parseFloat(portfolio.cash_balance || 0) : 0).toLocaleString('vi-VN')} VNĐ</span>
                     <button
                       className="btn-plus"
-                      onClick={() => {
-                        // Tính và set số lượng tối đa có thể mua dựa trên số tiền
-                        if (orderSide === 'BUY') {
-                          const availableBalance = portfolio ? parseFloat(portfolio.cash_balance || 0) : 0
-                          let price = 0
-
-                          if (orderType === 'LIMIT' || orderType === 'MTL') {
-                            price = parseFloat(orderPrice) || 0
-                          } else {
-                            const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-                            if (lastCandle && lastCandle.close) {
-                              price = parseFloat(lastCandle.close)
-                            }
-                          }
-
-                          if (price > 0) {
-                            const maxQty = Math.floor(availableBalance / (price * 1000))
-                            setOrderQuantity(maxQty.toString())
-                          }
-                        }
-                      }}
+                      onClick={() => navigate('/exchange')}
+                      title="Đổi sao lấy tiền"
                     >
                       +
                     </button>
