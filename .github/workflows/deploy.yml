@@ -1,0 +1,40 @@
+name: Deploy to Local Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Cho phép chạy thủ công
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Pull latest code
+      run: |
+        cd C:\Users\Admin\source\repos\learning_stock_market_investing
+        git pull origin main
+        
+    - name: Install frontend dependencies
+      run: |
+        cd C:\Users\Admin\source\repos\learning_stock_market_investing\frontend
+        npm install
+        
+    - name: Build frontend
+      run: |
+        cd C:\Users\Admin\source\repos\learning_stock_market_investing\frontend
+        npm run build
+        
+    - name: Restart backend
+      run: |
+        # Tạm thời chỉ log, bạn có thể thêm script restart backend sau
+        echo "Backend restart would go here"
+        # Ví dụ: Stop-Process -Name "python" -Force -ErrorAction SilentlyContinue
+        # Start-Process python -ArgumentList "run.py" -WorkingDirectory "C:\Users\Admin\source\repos\learning_stock_market_investing\backend"
+        
+    - name: Deploy complete
+      run: |
+        echo "Deployment completed at $(Get-Date)"
