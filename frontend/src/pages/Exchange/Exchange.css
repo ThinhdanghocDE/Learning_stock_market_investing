@@ -1,0 +1,205 @@
+.exchange-page {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.exchange-container {
+    background-color: var(--bg-color);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.exchange-header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 2rem;
+    text-align: center;
+}
+
+.exchange-header h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.exchange-header p {
+    opacity: 0.9;
+    font-size: 0.9375rem;
+}
+
+.exchange-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding: 1.5rem;
+    background-color: var(--bg-secondary);
+}
+
+.info-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background-color: var(--bg-color);
+    border-radius: 0.5rem;
+    text-align: center;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.info-value.stars {
+    color: var(--warning-color);
+}
+
+.info-value.money {
+    color: var(--success-color);
+}
+
+.info-card.rate {
+    background-color: var(--primary-color);
+}
+
+.info-card.rate .info-label,
+.info-card.rate .info-value {
+    color: white;
+}
+
+.exchange-form {
+    padding: 1.5rem;
+}
+
+.exchange-form .form-group {
+    margin-bottom: 1rem;
+}
+
+.exchange-form label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-label);
+}
+
+.exchange-form input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.exchange-form input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.preset-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.preset-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 0.625rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.preset-btn:hover:not(:disabled) {
+    border-color: var(--primary-color);
+    background-color: var(--bg-secondary);
+}
+
+.preset-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.preset-btn.all {
+    background-color: var(--warning-color);
+    color: white;
+    border-color: var(--warning-color);
+}
+
+.preview {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: var(--bg-secondary);
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.preview-money {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--success-color);
+}
+
+.message {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+
+.message.success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.exchange-btn {
+    width: 100%;
+    padding: 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.exchange-btn:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+}
+
+.exchange-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+    .exchange-info {
+        grid-template-columns: 1fr;
+    }
+}
