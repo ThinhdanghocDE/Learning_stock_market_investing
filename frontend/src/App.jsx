@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import Layout from './components/Layout/Layout'
+import AdminLayout from './components/AdminLayout/AdminLayout'
+import Homepage from './pages/Homepage/Homepage'
 import LoginPage from './pages/Auth/LoginPage'
 import RegisterPage from './pages/Auth/RegisterPage'
 import DashboardPage from './pages/Dashboard/DashboardPage'
@@ -8,7 +10,10 @@ import TradingPage from './pages/Trading/TradingPage'
 import LearningPage from './pages/Learning/LearningPage'
 import LessonDetailPage from './pages/Learning/LessonDetailPage'
 import PortfolioPage from './pages/Portfolio/PortfolioPage'
+import ExchangePage from './pages/Exchange/ExchangePage'
+import AdminHomepagePage from './pages/Admin/AdminHomepagePage'
 import AdminLessonsPage from './pages/Admin/AdminLessonsPage'
+import AdminUsersPage from './pages/Admin/AdminUsersPage'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
 
 function App() {
@@ -17,26 +22,33 @@ function App() {
   return (
     <Routes>
       {/* Public routes */}
+      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Homepage />} />
       <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />} />
       <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <RegisterPage />} />
 
-      {/* Protected routes */}
+      {/* Protected routes - User Layout */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/trading" element={<TradingPage />} />
         <Route path="/learning" element={<LearningPage />} />
         <Route path="/learning/:lessonId" element={<LessonDetailPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
-        <Route path="/admin/lessons" element={<AdminLessonsPage />} />
+        <Route path="/exchange" element={<ExchangePage />} />
       </Route>
 
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
-      <Route path="*" element={<Navigate to="/dashboard" />} />
+      {/* Admin routes - Admin Layout with Sidebar */}
+      <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+        <Route path="/admin/homepage" element={<AdminHomepagePage />} />
+        <Route path="/admin/lessons" element={<AdminLessonsPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/stats" element={<div className="admin-page"><h1>Thống kê</h1><p>Đang phát triển...</p></div>} />
+        <Route path="/admin" element={<Navigate to="/admin/lessons" />} />
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   )
 }
 
 export default App
-
-
