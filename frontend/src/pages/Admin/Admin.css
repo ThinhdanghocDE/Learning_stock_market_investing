@@ -116,6 +116,25 @@
     background-color: #fecaca;
 }
 
+.role-select {
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.role-select.admin {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.role-select.user {
+    background-color: var(--bg-secondary);
+    color: var(--text-color);
+}
+
 /* Modal */
 .modal-overlay {
     position: fixed;
