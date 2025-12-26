@@ -42,13 +42,13 @@
   .chart-and-panel-container {
     flex-direction: column;
   }
-  
+
   .trading-panel {
     width: 100%;
     min-width: unset;
     max-height: unset;
   }
-  
+
   .chart-container {
     width: 100%;
   }
@@ -331,10 +331,10 @@
 }
 
 .trading-panel {
-  width: 400px;
-  min-width: 350px;
+  width: 380px;
+  min-width: 380px;
   background-color: var(--bg-color);
-  padding: 1rem;
+  padding: 1.25rem;
   border-radius: 0.5rem;
   box-shadow: var(--shadow);
   border: 1px solid var(--border-color);
@@ -615,21 +615,36 @@
   gap: 0.5rem;
 }
 
+.quantity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .quantity-input {
+  flex: 1;
   padding: 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
   font-size: 1rem;
   background-color: var(--bg-color);
   color: var(--text-color);
+  min-width: 0;
 }
 
-.quantity-input-wrapper .btn-adjust {
-  align-self: flex-end;
-  margin-top: -3.5rem;
-  margin-right: 0.5rem;
-  position: relative;
-  z-index: 1;
+.quantity-buttons {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.quantity-buttons .btn-adjust {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .error-message {
@@ -1477,13 +1492,13 @@
   .company-info-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .symbol-panel-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
   }
-  
+
   .current-symbol-badge {
     width: 100%;
     justify-content: space-between;

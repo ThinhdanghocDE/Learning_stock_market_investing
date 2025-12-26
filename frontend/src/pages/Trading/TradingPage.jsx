@@ -22,7 +22,7 @@ function TradingPage() {
   const [startTime, setStartTime] = useState('00:00')
   const [endDate, setEndDate] = useState('')
   const [endTime, setEndTime] = useState('23:59')
-  
+
   // Challenge state
   const [challengeActive, setChallengeActive] = useState(false)
   const [challengeStartDate, setChallengeStartDate] = useState('')
@@ -36,7 +36,7 @@ function TradingPage() {
   const [challengeTotalValue, setChallengeTotalValue] = useState(10000000) // Tổng giá trị trong challenge
   const [challengePositions, setChallengePositions] = useState([]) // Vị thế trong challenge (số lượng đã mua)
   const [pendingOrders, setPendingOrders] = useState([]) // Lệnh đang chờ (ATO/ATC)
-  
+
   // Order form state
   const [orderSide, setOrderSide] = useState('BUY')
   const [orderType, setOrderType] = useState('LIMIT') // 'LIMIT', 'MTL', 'ATO', 'ATC'
@@ -46,20 +46,20 @@ function TradingPage() {
   const [accountType, setAccountType] = useState('cash') // 'cash', 'margin'
   const [portfolio, setPortfolio] = useState(null)
   const [positions, setPositions] = useState([])
-  
+
   // Modal state
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('')
   const [modalMessage, setModalMessage] = useState('')
   const [modalType, setModalType] = useState('info')
-  
+
   // Rules modal state
   const [rulesModalOpen, setRulesModalOpen] = useState(false)
-  
+
   // AI Coach state
   const [aiCoachOpen, setAiCoachOpen] = useState(false)
-  
-  
+
+
   // Helper function để hiển thị modal
   const showModal = (title, message, type = 'info') => {
     setModalTitle(title)
@@ -67,7 +67,7 @@ function TradingPage() {
     setModalType(type)
     setModalOpen(true)
   }
-  
+
   // Hàm kiểm tra phiên giao dịch hiện tại
   const getCurrentSession = () => {
     const now = new Date()
@@ -91,8 +91,8 @@ function TradingPage() {
     // Lọc candles của symbol và date
     const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0]
     const candlesForDate = historicalCandlesRef.current.filter(candle => {
-      const candleDate = typeof candle.time === 'string' 
-        ? candle.time.split('T')[0] 
+      const candleDate = typeof candle.time === 'string'
+        ? candle.time.split('T')[0]
         : new Date(candle.time * 1000).toISOString().split('T')[0]
       return candleDate === dateStr
     })
@@ -115,7 +115,7 @@ function TradingPage() {
   // Helper: Lấy giá đóng cửa (close price) của candle cuối cùng trong ngày
   const getClosingPrice = useCallback((targetSymbol, date) => {
     console.log('getClosingPrice called with:', { targetSymbol, date, candlesCount: historicalCandlesRef.current.length })
-    
+
     if (!targetSymbol || !date || historicalCandlesRef.current.length === 0) {
       console.warn('getClosingPrice: Missing params or no candles')
       return null
@@ -124,8 +124,8 @@ function TradingPage() {
     // Lọc candles của symbol và date
     const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0]
     const candlesForDate = historicalCandlesRef.current.filter(candle => {
-      const candleDate = typeof candle.time === 'string' 
-        ? candle.time.split('T')[0] 
+      const candleDate = typeof candle.time === 'string'
+        ? candle.time.split('T')[0]
         : new Date(candle.time * 1000).toISOString().split('T')[0]
       // ⚠️ LƯU Ý: historicalCandlesRef chỉ chứa candles của symbol đang xem trong chart
       // Không có candle.symbol để filter, nên sẽ LUÔN lấy giá của symbol hiện tại
@@ -151,15 +151,15 @@ function TradingPage() {
     console.log(`getClosingPrice: Result for ${targetSymbol}:`, price)
     return price
   }, [])
-  
+
   // Hàm xử lý khi chọn bước nhảy
   const handleStepSelection = (selectedStep) => {
     if (!challengeActive || !selectedStep) return
-    
+
     // Áp dụng bước nhảy được chọn
-      expandChartOnOrder(selectedStep)
+    expandChartOnOrder(selectedStep)
   }
-  
+
   const searchInputRef = useRef(null)
   const suggestionsRef = useRef(null)
   const chartContainerRef = useRef(null)
@@ -176,10 +176,10 @@ function TradingPage() {
   const pendingOrdersRef = useRef([])
   const processingATCOrdersRef = useRef(false)
   const processingATOOrdersRef = useRef(false)
-  
+
   // Chart mode: LIVE (real-time) hoặc HISTORY (xem dữ liệu quá khứ)
   const [chartMode, setChartMode] = useState('LIVE') // 'LIVE' | 'HISTORY'
-  
+
   // Update token ref khi token thay đổi (nhưng không trigger reconnect)
   useEffect(() => {
     tokenRef.current = token
@@ -189,11 +189,11 @@ function TradingPage() {
   useEffect(() => {
     const fetchPendingOrders = async () => {
       if (challengeActive) return // Không load trong challenge mode
-      
+
       try {
         const response = await api.get('/portfolio/orders/pending-ato-atc')
         const orders = response.data || []
-        
+
         // Chuyển đổi format từ DB sang format của pendingOrders state
         const formattedOrders = orders.map(order => ({
           id: order.id,
@@ -206,7 +206,7 @@ function TradingPage() {
           targetDate: new Date(order.created_at).toISOString().split('T')[0], // YYYY-MM-DD
           createdAt: order.created_at
         }))
-        
+
         setPendingOrders(formattedOrders)
         console.log('Loaded pending ATO/ATC orders from DB:', formattedOrders)
       } catch (error) {
@@ -214,9 +214,9 @@ function TradingPage() {
         // Không báo lỗi, chỉ log
       }
     }
-    
+
     fetchPendingOrders()
-    
+
     // Reload pending orders mỗi 30 giây để đảm bảo có dữ liệu mới nhất
     const interval = setInterval(fetchPendingOrders, 30000)
     return () => clearInterval(interval)
@@ -240,7 +240,7 @@ function TradingPage() {
           // Không báo lỗi nếu check fail
           console.log('Check limit orders:', checkError.response?.data || checkError.message)
         }
-        
+
         // Sau đó fetch dữ liệu mới nhất
         // Endpoint /api/portfolio trả về PortfolioResponse trực tiếp (không có wrapper)
         // Endpoint /api/portfolio/summary trả về {portfolio, positions, ...}
@@ -282,7 +282,7 @@ function TradingPage() {
         }
       }
     }
-    
+
     if (token) {
       fetchPortfolio()
       // Refresh portfolio mỗi 5 giây để cập nhật giá và fill QUEUED orders
@@ -293,7 +293,14 @@ function TradingPage() {
 
   // Hàm xử lý lệnh ATO khi đến 09:15
   const processATOOrders = useCallback(async () => {
-    if (challengeActive || pendingOrders.length === 0) return
+    // Dùng ref để tránh stale closure
+    const currentPendingOrders = pendingOrdersRef.current
+
+    if (challengeActive || currentPendingOrders.length === 0) return
+
+    // Tránh xử lý đồng thời
+    if (processingATOOrdersRef.current) return
+    processingATOOrdersRef.current = true
 
     const now = new Date()
     const hours = now.getHours()
@@ -301,24 +308,40 @@ function TradingPage() {
     const time = hours * 100 + minutes
 
     // Chỉ xử lý sau 09:15
-    if (time < 915) return
+    if (time < 915) {
+      processingATOOrdersRef.current = false
+      return
+    }
 
     const today = now.toISOString().split('T')[0]
-    const atoOrders = pendingOrders.filter(
-      order => order.orderType === 'ATO' 
-        && order.status === 'PENDING' 
+    const atoOrders = currentPendingOrders.filter(
+      order => order.orderType === 'ATO'
+        && order.status === 'PENDING'
         && order.targetDate === today
     )
 
-    if (atoOrders.length === 0) return
+    if (atoOrders.length === 0) {
+      processingATOOrdersRef.current = false
+      return
+    }
 
     console.log('Processing ATO orders:', atoOrders)
 
     for (const order of atoOrders) {
       try {
-        // Lấy giá mở cửa
-        const openingPrice = getOpeningPrice(order.symbol, order.targetDate)
-        
+        // Lấy giá mở cửa từ API thay vì local data (vì local chỉ có symbol đang view)
+        let openingPrice = null
+        try {
+          const priceResponse = await api.get(`/ohlc/${order.symbol}/price`)
+          // Dùng giá mở cửa của phiên hiện tại
+          openingPrice = priceResponse.data?.open || priceResponse.data?.price
+          console.log(`Got opening price for ${order.symbol}: ${openingPrice}`)
+        } catch (priceError) {
+          console.warn(`Cannot get price for ${order.symbol}:`, priceError)
+          // Fallback: thử dùng local data nếu đang xem đúng symbol
+          openingPrice = getOpeningPrice(order.symbol, order.targetDate)
+        }
+
         if (!openingPrice || openingPrice <= 0) {
           console.warn(`Cannot get opening price for ${order.symbol} on ${order.targetDate}`)
           continue
@@ -328,7 +351,7 @@ function TradingPage() {
         if (order.side === 'BUY') {
           const availableBalance = portfolio ? parseFloat(portfolio.cash_balance || 0) : 0
           const requiredAmount = openingPrice * order.quantity * 1000 // Giá là nghìn VNĐ
-          
+
           if (requiredAmount > availableBalance) {
             console.warn(`Insufficient balance for ATO order ${order.id}`)
             continue
@@ -375,7 +398,7 @@ function TradingPage() {
         }
       }
     }
-    
+
     // Release lock
     processingATOOrdersRef.current = false
   }, [challengeActive, portfolio, positions, getOpeningPrice])
@@ -392,7 +415,7 @@ function TradingPage() {
       console.log('processATCOrders: Already processing, skipping...')
       return
     }
-    
+
     if (challengeActive) {
       console.log('processATCOrders: Skipping - challengeActive:', challengeActive)
       return
@@ -419,10 +442,10 @@ function TradingPage() {
     // Fix timezone: dùng giờ VN thay vì UTC
     const todayVN = new Date(now.getTime() + (7 * 60 * 60 * 1000)).toISOString().split('T')[0] // UTC+7
     console.log('processATCOrders: Looking for ATC orders. Today (VN):', todayVN, 'All pending orders:', currentPendingOrders)
-    
+
     // Xử lý tất cả ATC orders pending (không chỉ của hôm nay, vì có thể có lệnh của ngày trước chưa được xử lý)
     const atcOrders = currentPendingOrders.filter(
-      order => order.orderType === 'ATC' 
+      order => order.orderType === 'ATC'
         && order.status === 'PENDING'
         // Xử lý cả lệnh của hôm nay và các ngày trước (nếu chưa được xử lý)
         && (order.targetDate === todayVN || new Date(order.targetDate) <= new Date(todayVN))
@@ -440,13 +463,13 @@ function TradingPage() {
     for (const order of atcOrders) {
       try {
         console.log(`Processing ATC order for ${order.symbol}:`, order)
-        
+
         // ⚠️ BUG FIX: historicalCandlesRef chỉ chứa candles của symbol đang xem
         // Không thể dùng để lấy giá của symbol khác
         // → LUÔN fetch từ API để đảm bảo đúng symbol
-        
+
         let closingPrice = null
-        
+
         // LUÔN fetch từ API để đảm bảo lấy đúng symbol
         console.log(`Fetching closing price from API for ${order.symbol} on ${order.targetDate}`)
         try {
@@ -455,20 +478,20 @@ function TradingPage() {
           const priceResponse = await api.get(
             `/ohlc/historical?symbol=${order.symbol}&interval=1m&limit=1000&end_time=${encodeURIComponent(endDateTime)}`
           )
-          
+
           console.log(`API response for ${order.symbol}:`, priceResponse.data?.data?.length, 'candles')
-          
+
           if (priceResponse.data?.data && priceResponse.data.data.length > 0) {
             // Lọc candles của ngày hôm đó
             const candlesForDate = priceResponse.data.data.filter(candle => {
-              const candleDate = typeof candle.time === 'string' 
-                ? candle.time.split('T')[0] 
+              const candleDate = typeof candle.time === 'string'
+                ? candle.time.split('T')[0]
                 : new Date(candle.time * 1000).toISOString().split('T')[0]
               return candleDate === order.targetDate
             })
-            
+
             console.log(`Filtered candles for ${order.symbol} on ${order.targetDate}:`, candlesForDate.length)
-            
+
             if (candlesForDate.length > 0) {
               // Sắp xếp theo thời gian và lấy candle cuối cùng
               const sorted = candlesForDate.sort((a, b) => {
@@ -484,19 +507,19 @@ function TradingPage() {
         } catch (apiError) {
           console.error(`Error fetching closing price from API for ${order.symbol}:`, apiError)
         }
-        
+
         if (!closingPrice || closingPrice <= 0) {
           console.warn(`Cannot get closing price for ${order.symbol} on ${order.targetDate}. Order will be retried later.`)
           continue
         }
-        
+
         console.log(`✅ Will fill ATC order: ${order.symbol} ${order.side} ${order.quantity} @ ${closingPrice}`)
 
         // Kiểm tra số dư/số lượng trước khi khớp
         if (order.side === 'BUY') {
           const availableBalance = portfolio ? parseFloat(portfolio.cash_balance || 0) : 0
           const requiredAmount = closingPrice * order.quantity * 1000 // Giá là nghìn VNĐ
-          
+
           if (requiredAmount > availableBalance) {
             console.warn(`Insufficient balance for ATC order ${order.id}`)
             continue
@@ -543,7 +566,7 @@ function TradingPage() {
         }
       }
     }
-    
+
     // Release lock
     processingATCOrdersRef.current = false
   }, [challengeActive, portfolio, positions, getClosingPrice])
@@ -586,7 +609,7 @@ function TradingPage() {
         // Fetch tất cả symbols (không giới hạn)
         const response = await api.get('/symbols')
         console.log('Symbols response:', response.data)
-        
+
         // Handle different response formats
         let symbolsList = []
         if (response.data.symbols && Array.isArray(response.data.symbols)) {
@@ -594,12 +617,12 @@ function TradingPage() {
         } else if (Array.isArray(response.data)) {
           symbolsList = response.data.map(s => s.symbol || s)
         }
-        
+
         // Fallback to default symbol if empty
         if (symbolsList.length === 0) {
           symbolsList = ['ACB', 'VCB', 'VIC', 'VNM', 'FPT']
         }
-        
+
         setSymbols(symbolsList)
         setLoading(false)
       } catch (error) {
@@ -771,7 +794,7 @@ function TradingPage() {
 
       const candle = param.seriesData.get(candlestickSeries)
       const volume = param.seriesData.get(volumeSeries)
-      
+
       if (candle) {
         setLegendData({
           open: candle.open?.toFixed(2) || '-',
@@ -824,12 +847,12 @@ function TradingPage() {
     if (!challengeActive || challengePositions.length === 0) {
       return
     }
-    
+
     // Lấy giá hiện tại từ candle cuối cùng
     const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
     if (lastCandle && lastCandle.close) {
       const currentPrice = parseFloat(lastCandle.close)
-      
+
       // Tính tổng giá trị positions (mỗi position có thể là symbol khác nhau)
       // Lưu ý: currentPrice là nghìn VNĐ, challengeBalance là VNĐ, cần nhân 1000 khi tính positionsValue
       let positionsValue = 0
@@ -839,7 +862,7 @@ function TradingPage() {
         const price = pos.symbol === symbol ? currentPrice : (pos.avg_price || currentPrice)
         positionsValue += pos.quantity * price * 1000 // Nhân 1000 để đổi từ nghìn VNĐ sang VNĐ
       })
-      
+
       // Total value = cash balance + positions value
       const newTotalValue = challengeBalance + positionsValue
       setChallengeTotalValue(newTotalValue)
@@ -863,10 +886,10 @@ function TradingPage() {
       if (typeof time === 'string') {
         // Parse string time từ ClickHouse
         // Format thực tế: "2025-12-19T14:59:00" (ISO format, naive, UTC+7)
-        
+
         // Check xem có timezone indicator ở cuối string không
         const hasTimezone = time.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(time)
-        
+
         if (!hasTimezone) {
           // Data từ ClickHouse: "2025-12-19T14:59:00" (UTC+7, naive)
           // 
@@ -880,7 +903,7 @@ function TradingPage() {
           const utcTimestamp = Math.floor(dtVN.getTime() / 1000) // UTC timestamp (seconds)
           const vnHanoiOffset = 7 * 60 * 60 // 7 giờ tính bằng giây
           const timestamp = utcTimestamp + vnHanoiOffset // Cộng thêm 7 giờ
-          
+
           return timestamp
         } else {
           // Đã có timezone info (Z hoặc +HH:MM/-HH:MM), parse trực tiếp
@@ -896,7 +919,7 @@ function TradingPage() {
 
     const candleData = sorted.map((c, index) => {
       const timestamp = normalizeTime(c.time)
-      
+
       // Debug: Log first candle để kiểm tra conversion
       if (index === 0) {
         const originalTime = c.time
@@ -910,7 +933,7 @@ function TradingPage() {
           expectedVN: originalTime // Nên match với original nếu conversion đúng
         })
       }
-      
+
       return {
         time: timestamp,
         open: parseFloat(c.open) || 0,
@@ -925,8 +948,8 @@ function TradingPage() {
       return {
         time: timestamp,
         value: parseFloat(c.volume || 0),
-        color: (parseFloat(c.close) >= parseFloat(c.open)) 
-          ? 'rgba(38, 166, 154, 0.5)' 
+        color: (parseFloat(c.close) >= parseFloat(c.open))
+          ? 'rgba(38, 166, 154, 0.5)'
           : 'rgba(239, 83, 80, 0.5)',
       }
     }).filter(c => c.time > 0)
@@ -942,12 +965,12 @@ function TradingPage() {
     candlestickSeriesRef.current.setData(candleData)
     volumeSeriesRef.current.setData(volData)
     vwapSeriesRef.current.setData(vwapData)
-    
+
     // Fit content để hiển thị toàn bộ data
     if (chartRef.current) {
       chartRef.current.timeScale().fitContent()
     }
-    
+
     // Cập nhật challenge total value sau khi update chart
     if (challengeActive && challengePositions.length > 0) {
       const lastCandle = sorted[sorted.length - 1]
@@ -963,7 +986,7 @@ function TradingPage() {
         setChallengeTotalValue(newTotalValue)
       }
     }
-    
+
     if (chartRef.current) {
       // Set custom time formatter để hiển thị đúng giờ Việt Nam (UTC+7)
       chartRef.current.timeScale().applyOptions({
@@ -1029,7 +1052,7 @@ function TradingPage() {
     }
 
     candlestickSeriesRef.current.update(candleData)
-    
+
     if (volumeSeriesRef.current) {
       volumeSeriesRef.current.update({
         time: timestamp,
@@ -1083,20 +1106,20 @@ function TradingPage() {
 
     try {
       console.log('Fetching historical data for:', symbol, { startDate, endDate, challengeActive })
-      
+
       // Nếu đang trong challenge, sử dụng challenge dates
       let actualStartDate = startDate
       let actualEndDate = endDate
       let actualStartTime = startTime
       let actualEndTime = endTime
-      
+
       if (challengeActive && chartViewStartDate) {
         actualStartDate = chartViewStartDate
         actualStartTime = '00:00' // Chart view luôn bắt đầu từ 00:00
-        
+
         // End date là challengeCurrentDate hoặc challengeStartDate
         actualEndDate = challengeCurrentDate || challengeStartDate
-        
+
         // End time: nếu đang ở ngày bắt đầu, dùng challengeStartTime, nếu không thì dùng 23:59
         if (actualEndDate === challengeStartDate) {
           actualEndTime = challengeStartTime
@@ -1104,16 +1127,16 @@ function TradingPage() {
           actualEndTime = '23:59'
         }
       }
-      
+
       // Build query params
       // Xác định mode: HISTORY nếu có date filter, LIVE nếu không có
       const isHistoryMode = !!(actualStartDate || actualEndDate)
-      
+
       // LIVE mode: limit=200 (chỉ lấy 200 candles gần nhất)
       // HISTORY mode: limit=10000 (lấy đủ dữ liệu trong khoảng thời gian)
       const limit = isHistoryMode ? 10000 : 1000
       let url = `/ohlc/historical?symbol=${symbol}&interval=1m&limit=${limit}`
-      
+
       if (actualStartDate) {
         // Format: YYYY-MM-DDTHH:MM:SS (UTC+7 timezone)
         const startDateTime = `${actualStartDate}T${actualStartTime}:00+07:00`
@@ -1127,16 +1150,16 @@ function TradingPage() {
         const endDateTime = `${actualEndDate}T${endTimeFormatted}+07:00`
         url += `&end_time=${encodeURIComponent(endDateTime)}`
       }
-      
+
       // Set chart mode dựa trên date filter
       setChartMode(isHistoryMode ? 'HISTORY' : 'LIVE')
-      
+
       console.log('Fetch URL:', url)
       console.log('Date range:', { actualStartDate, actualEndDate, startTime, endTime })
-      
+
       const response = await api.get(url)
       console.log('Historical data response:', response.data)
-      
+
       if (!response.data.data || response.data.data.length === 0) {
         console.warn('No historical data received')
         setLoading(false)
@@ -1155,7 +1178,7 @@ function TradingPage() {
       }))
 
       updateChart()
-      
+
       // Cập nhật challenge total value sau khi fetch data mới
       if (challengeActive && challengePositions.length > 0) {
         setTimeout(() => {
@@ -1173,7 +1196,7 @@ function TradingPage() {
           }
         }, 100)
       }
-      
+
       setLoading(false)
     } catch (error) {
       console.error('Error fetching historical data:', error)
@@ -1188,22 +1211,22 @@ function TradingPage() {
       if (!candlestickSeriesRef.current) {
         return
       }
-      
-    // Nếu đang expand chart (từ expandChartOnOrder), không fetch lại
-    // KHÔNG reset flag ở đây, để flag được reset sau khi fetch xong trong expandChartOnOrder
-    if (isExpandingChartRef.current) {
-      return
-    }
-    
-    // Nếu có date filter và không phải challenge mode, không auto-fetch
-    // User phải click nút "Tìm kiếm"
-    if ((startDate || endDate) && !challengeActive) {
-      return
-    }
-    
-    fetchChartData()
+
+      // Nếu đang expand chart (từ expandChartOnOrder), không fetch lại
+      // KHÔNG reset flag ở đây, để flag được reset sau khi fetch xong trong expandChartOnOrder
+      if (isExpandingChartRef.current) {
+        return
+      }
+
+      // Nếu có date filter và không phải challenge mode, không auto-fetch
+      // User phải click nút "Tìm kiếm"
+      if ((startDate || endDate) && !challengeActive) {
+        return
+      }
+
+      fetchChartData()
     }, 200) // Delay để đảm bảo chart đã được khởi tạo
-    
+
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, challengeActive]) // Loại bỏ candlestickSeriesRef khỏi dependencies
@@ -1222,26 +1245,26 @@ function TradingPage() {
       }
 
       console.log('Connecting WebSocket for realtime updates, symbol:', symbol)
-      
+
       // Sử dụng token từ ref để tránh reconnect khi token thay đổi
       wsClient.connect(symbol, tokenRef.current).then(() => {
         console.log('WebSocket connected successfully')
         const unsubscribe = wsClient.subscribe((message) => {
           if (message.type === 'ohlc_update') {
             const candle = message.data
-            
+
             // CHỐT CHẶN: Chỉ update nếu message trả về đúng symbol đang xem
             if (message.symbol === symbol) {
               console.log('Received OHLC update:', candle.time, candle.close)
-            updateOrAppendCandle({
-              time: candle.time,
-              open: parseFloat(candle.open),
-              high: parseFloat(candle.high),
-              low: parseFloat(candle.low),
-              close: parseFloat(candle.close),
-              volume: parseFloat(candle.volume) || 0,
-              vwap: parseFloat(candle.vwap) || 0,
-            })
+              updateOrAppendCandle({
+                time: candle.time,
+                open: parseFloat(candle.open),
+                high: parseFloat(candle.high),
+                low: parseFloat(candle.low),
+                close: parseFloat(candle.close),
+                volume: parseFloat(candle.volume) || 0,
+                vwap: parseFloat(candle.vwap) || 0,
+              })
             } else {
               console.log('Ignoring OHLC update for different symbol:', message.symbol, 'Current:', symbol)
             }
@@ -1281,7 +1304,7 @@ function TradingPage() {
     const end = new Date(startDate)
     let tradingDaysCount = 0
     let daysAdded = 0
-    
+
     // Đếm các ngày giao dịch (bỏ qua thứ 7 và chủ nhật)
     while (tradingDaysCount < numTradingDays) {
       const checkDate = new Date(startDate)
@@ -1295,38 +1318,38 @@ function TradingPage() {
       }
       daysAdded++
     }
-    
+
     return end
   }
 
   // Hàm bắt đầu thử thách
   const handleStartChallenge = async () => {
     if (!challengeStartDate) return
-    
+
     try {
       // KHÔNG reset balance thực tế - chỉ quản lý challenge balance ở frontend
       // Kết hợp date và time
       const startDateTime = `${challengeStartDate}T${challengeStartTime}:00`
       const start = new Date(startDateTime)
       const duration = parseInt(challengeDuration)
-      
+
       // Tính ngày kết thúc chỉ tính các ngày giao dịch (thứ 2-6)
       const end = calculateEndDate(start, duration)
-      
+
       // Tính ngày bắt đầu hiển thị chart (7 ngày trước ngày bắt đầu)
       const chartStart = new Date(start)
       chartStart.setDate(chartStart.getDate() - 7)
-      
+
       setChallengeActive(true)
       setChallengeCurrentDate(challengeStartDate)
       setChallengeEndDate(end.toISOString().split('T')[0])
       setChartViewStartDate(chartStart.toISOString().split('T')[0])
-      
+
       // Khởi tạo challenge balance và total value
       setChallengeBalance(challengeCapital)
       setChallengeTotalValue(challengeCapital)
       setChallengePositions([]) // Reset positions khi bắt đầu challenge mới
-      
+
       // Set date filter để hiển thị chart
       setStartDate(chartStart.toISOString().split('T')[0])
       setStartTime('00:00')
@@ -1344,14 +1367,14 @@ function TradingPage() {
     try {
       // Tính lãi lỗ dựa trên challengeBalance + giá trị positions tại thời điểm kết thúc
       let portfolioValue = challengeBalance
-      
+
       // Nếu có positions, tính lại total value với giá tại thời điểm kết thúc
       if (challengePositions.length > 0) {
         try {
           // Lấy giá tại thời điểm kết thúc từ API
           const endDateTime = `${challengeEndDate}T15:00:00+07:00`
           const priceResponse = await api.get(`/ohlc/historical?symbol=${symbol}&interval=1m&limit=1&end_time=${encodeURIComponent(endDateTime)}`)
-          
+
           if (priceResponse.data.data && priceResponse.data.data.length > 0) {
             const lastPrice = parseFloat(priceResponse.data.data[priceResponse.data.data.length - 1].close)
             // Tính tổng giá trị positions
@@ -1379,13 +1402,13 @@ function TradingPage() {
         // Nếu không có positions, total value = balance
         portfolioValue = challengeBalance
       }
-      
+
       const profit = portfolioValue - challengeCapital
       const profitPercent = ((profit / challengeCapital) * 100).toFixed(2)
-      
+
       const resultMessage = `Vốn ban đầu: ${challengeCapital.toLocaleString('vi-VN')} VNĐ\nGiá trị hiện tại: ${portfolioValue.toLocaleString('vi-VN')} VNĐ\nLãi/Lỗ: ${profit >= 0 ? '+' : ''}${profit.toLocaleString('vi-VN')} VNĐ (${profitPercent}%)`
       showModal('Thử thách kết thúc!', resultMessage, profit >= 0 ? 'success' : 'error')
-      
+
       // Reset challenge
       setChallengeActive(false)
       setChallengeStartDate('')
@@ -1401,7 +1424,7 @@ function TradingPage() {
       setEndDate('')
       setEndTime('23:59')
       challengeCurrentTimeRef.current = '23:59'
-      
+
       // Refresh portfolio để hiển thị lại số dư thực tế
       const portfolioResponse = await api.get('/portfolio/summary')
       if (portfolioResponse.data) {
@@ -1424,11 +1447,11 @@ function TradingPage() {
     try {
       // Sử dụng sideOverride nếu có, nếu không thì dùng orderSide hiện tại
       const currentSide = sideOverride || orderSide
-      
+
       if (!orderQuantity || parseInt(orderQuantity) === 0) {
         showModal('Thông báo', 'Vui lòng nhập số lượng', 'warning')
-      return
-    }
+        return
+      }
 
       // CHALLENGE MODE: Bỏ qua các kiểm tra orderType và session
       if (!challengeActive) {
@@ -1441,19 +1464,19 @@ function TradingPage() {
         // Kiểm tra số dư trước khi đặt lệnh MUA (realtime mode)
         if (currentSide === 'BUY') {
           const availableBalance = portfolio ? parseFloat(portfolio.cash_balance || 0) : 0
-      const quantity = parseInt(orderQuantity)
-      let requiredAmount = 0
-      
-      if (orderType === 'MARKET') {
-        const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-        if (lastCandle && lastCandle.close) {
-          requiredAmount = parseFloat(lastCandle.close) * quantity * 1000
-        } else {
-          showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
-          return
-        }
+          const quantity = parseInt(orderQuantity)
+          let requiredAmount = 0
+
+          if (orderType === 'MARKET') {
+            const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+            if (lastCandle && lastCandle.close) {
+              requiredAmount = parseFloat(lastCandle.close) * quantity * 1000
+            } else {
+              showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
+              return
+            }
           } else if (orderType === 'LIMIT') {
-        requiredAmount = parseFloat(orderPrice) * quantity * 1000
+            requiredAmount = parseFloat(orderPrice) * quantity * 1000
           } else if (orderType === 'MTL') {
             const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
             if (lastCandle && lastCandle.close) {
@@ -1470,24 +1493,24 @@ function TradingPage() {
               showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
               return
             }
-      }
-      
-      if (requiredAmount > availableBalance) {
-        const insufficientMessage = `Cần: ${requiredAmount.toLocaleString('vi-VN')} VNĐ\nCó: ${availableBalance.toLocaleString('vi-VN')} VNĐ\nThiếu: ${(requiredAmount - availableBalance).toLocaleString('vi-VN')} VNĐ`
-        showModal('Số dư không đủ', insufficientMessage, 'error')
-        return
-      }
+          }
+
+          if (requiredAmount > availableBalance) {
+            const insufficientMessage = `Cần: ${requiredAmount.toLocaleString('vi-VN')} VNĐ\nCó: ${availableBalance.toLocaleString('vi-VN')} VNĐ\nThiếu: ${(requiredAmount - availableBalance).toLocaleString('vi-VN')} VNĐ`
+            showModal('Số dư không đủ', insufficientMessage, 'error')
+            return
+          }
         } else if (currentSide === 'SELL') {
           // Kiểm tra số lượng khi BÁN (realtime mode)
           const quantity = parseInt(orderQuantity)
           const existing = positions.find(p => p.symbol === symbol)
-          
+
           if (!existing) {
             showModal('Lỗi', 'Bạn chưa có cổ phiếu này để bán', 'error')
             setOrderSubmitting(false)
             return
           }
-          
+
           if (existing.quantity < quantity) {
             showModal('Lỗi', `Số lượng chứng khoán không đủ. Bạn có ${existing.quantity} cổ, cần ${quantity} cổ`, 'error')
             setOrderSubmitting(false)
@@ -1497,7 +1520,7 @@ function TradingPage() {
 
         // Kiểm tra phiên giao dịch (realtime mode)
         const session = getCurrentSession()
-        
+
         // Xử lý ATO: Lưu vào DB, sẽ khớp sau 09:15
         if (orderType === 'ATO') {
           if (session !== 'ATO_SESSION') {
@@ -1505,7 +1528,7 @@ function TradingPage() {
             setOrderSubmitting(false)
             return
           }
-          
+
           try {
             // Gọi API để lưu ATO vào DB
             const orderData = {
@@ -1515,10 +1538,10 @@ function TradingPage() {
               quantity: parseInt(orderQuantity),
               trading_mode: 'REALTIME'
             }
-            
+
             const response = await api.post('/portfolio/orders', orderData)
             const savedOrder = response.data
-            
+
             // Cập nhật pendingOrders state với order từ DB
             const pendingOrder = {
               id: savedOrder.id,
@@ -1532,7 +1555,7 @@ function TradingPage() {
               createdAt: savedOrder.created_at
             }
             setPendingOrders(prev => [...prev, pendingOrder])
-            
+
             showModal('Thông báo', 'Lệnh ATO đã được ghi nhận và sẽ khớp sau 09:15 dựa trên giá mở cửa', 'info')
             setOrderQuantity('')
             setOrderPrice('')
@@ -1545,7 +1568,7 @@ function TradingPage() {
             return
           }
         }
-        
+
         // Xử lý ATC: Lưu vào DB, sẽ khớp sau 14:45
         if (orderType === 'ATC') {
           try {
@@ -1557,10 +1580,10 @@ function TradingPage() {
               quantity: parseInt(orderQuantity),
               trading_mode: 'REALTIME'
             }
-            
+
             const response = await api.post('/portfolio/orders', orderData)
             const savedOrder = response.data
-            
+
             // Cập nhật pendingOrders state với order từ DB
             const pendingOrder = {
               id: savedOrder.id,
@@ -1574,7 +1597,7 @@ function TradingPage() {
               createdAt: savedOrder.created_at
             }
             setPendingOrders(prev => [...prev, pendingOrder])
-            
+
             if (session === 'CONTINUOUS_SESSION') {
               showModal('Thông báo', 'Lệnh ATC đã được ghi nhận và sẽ chờ khớp sau 14:45 dựa trên giá đóng cửa', 'info')
             } else if (session === 'ATC_SESSION') {
@@ -1582,7 +1605,7 @@ function TradingPage() {
             } else {
               showModal('Thông báo', 'Lệnh ATC đã được ghi nhận và sẽ khớp sau 14:45 dựa trên giá đóng cửa', 'info')
             }
-            
+
             setOrderQuantity('')
             setOrderPrice('')
             setOrderSubmitting(false)
@@ -1598,7 +1621,7 @@ function TradingPage() {
         // CHALLENGE MODE: Kiểm tra số dư và số lượng đơn giản
         if (currentSide === 'BUY') {
           const quantity = parseInt(orderQuantity)
-        const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+          const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
           if (lastCandle && lastCandle.close) {
             const requiredAmount = parseFloat(lastCandle.close) * quantity * 1000
             if (requiredAmount > challengeBalance) {
@@ -1611,29 +1634,29 @@ function TradingPage() {
         } else if (currentSide === 'SELL') {
           const quantity = parseInt(orderQuantity)
           const existing = challengePositions.find(p => p.symbol === symbol)
-          
+
           if (!existing) {
             showModal('Lỗi', 'Bạn chưa có cổ phiếu này để bán', 'error')
             setOrderSubmitting(false)
             return
           }
-          
+
           if (existing.quantity < quantity) {
             showModal('Lỗi', `Số lượng chứng khoán không đủ. Bạn có ${existing.quantity} cổ, cần ${quantity} cổ`, 'error')
             setOrderSubmitting(false)
             return
           }
+        }
       }
-    }
 
-    setOrderSubmitting(true)
-      
+      setOrderSubmitting(true)
+
       // CHALLENGE MODE: Xử lý local, không gọi API - Tất cả lệnh đều khớp ngay
       if (challengeActive) {
         // Lấy giá mới nhất từ chart (giá close của candle cuối cùng)
         const getPriceAtSimulatedTime = () => {
           if (historicalCandlesRef.current.length === 0) return null
-          
+
           // Sắp xếp mảng để đảm bảo nến cuối là nến mới nhất theo thời gian
           const sorted = [...historicalCandlesRef.current].sort((a, b) => {
             const timeA = typeof a.time === 'string' ? new Date(a.time).getTime() : (a.time > 1e12 ? a.time : a.time * 1000)
@@ -1643,18 +1666,18 @@ function TradingPage() {
           const latest = sorted[sorted.length - 1]
           return latest ? parseFloat(latest.close) : null
         }
-        
+
         const fillPrice = getPriceAtSimulatedTime()
-        
+
         if (!fillPrice || isNaN(fillPrice) || fillPrice <= 0) {
           showModal('Lỗi', 'Không thể lấy giá hiện tại. Vui lòng thử lại.', 'error')
           setOrderSubmitting(false)
           return
         }
-        
+
         const totalQuantity = parseInt(orderQuantity)
         const orderSymbol = symbol
-        
+
         // Tất cả lệnh đều khớp ngay 100%
         const fillQuantity = totalQuantity
         // Giá từ ClickHouse là nghìn VNĐ
@@ -1662,15 +1685,15 @@ function TradingPage() {
         const totalCostForAvgPrice = fillPrice * fillQuantity
         // totalCost cho trừ tiền (nhân 1000, vì balance lưu ở đơn vị VNĐ)
         const totalCostForBalance = fillPrice * fillQuantity * 1000
-        
+
         // Tính toán positions mới
         let updatedPositions = [...challengePositions]
         let newBalance = challengeBalance
-        
+
         if (currentSide === 'BUY') {
           // Trừ tiền khi mua (dùng totalCostForBalance)
           newBalance = challengeBalance - totalCostForBalance
-          
+
           // Cập nhật positions: thêm hoặc cập nhật số lượng
           const existing = updatedPositions.find(p => p.symbol === orderSymbol)
           if (existing) {
@@ -1685,8 +1708,8 @@ function TradingPage() {
             const totalCostOld = existing.avg_price * existing.quantity // Tổng chi phí cũ
             const totalCostNew = totalCostForAvgPrice // Tổng chi phí mới (fillPrice * fillQuantity)
             const newAvgPrice = (totalCostOld + totalCostNew) / totalQuantity
-            updatedPositions = updatedPositions.map(p => 
-              p.symbol === orderSymbol 
+            updatedPositions = updatedPositions.map(p =>
+              p.symbol === orderSymbol
                 ? { ...p, quantity: totalQuantity, avg_price: newAvgPrice }
                 : p
             )
@@ -1707,33 +1730,33 @@ function TradingPage() {
             setOrderSubmitting(false)
             return
           }
-          
+
           // Cộng tiền khi bán (dùng totalCostForBalance)
           newBalance = challengeBalance + totalCostForBalance
-          
+
           // Cập nhật positions: trừ số lượng
-            const newQuantity = existing.quantity - fillQuantity
-            if (newQuantity <= 0) {
-              // Xóa position nếu đã bán hết
-              updatedPositions = updatedPositions.filter(p => p.symbol !== orderSymbol)
-            } else {
-              // Giữ nguyên giá trung bình, chỉ giảm số lượng
-              updatedPositions = updatedPositions.map(p => 
-                p.symbol === orderSymbol 
-                  ? { ...p, quantity: newQuantity }
-                  : p
-              )
-            }
+          const newQuantity = existing.quantity - fillQuantity
+          if (newQuantity <= 0) {
+            // Xóa position nếu đã bán hết
+            updatedPositions = updatedPositions.filter(p => p.symbol !== orderSymbol)
+          } else {
+            // Giữ nguyên giá trung bình, chỉ giảm số lượng
+            updatedPositions = updatedPositions.map(p =>
+              p.symbol === orderSymbol
+                ? { ...p, quantity: newQuantity }
+                : p
+            )
+          }
         } else {
           showModal('Lỗi', 'Loại lệnh không hợp lệ', 'error')
           setOrderSubmitting(false)
           return
         }
-        
+
         // Cập nhật state
         setChallengeBalance(newBalance)
         setChallengePositions(updatedPositions)
-        
+
         // Tính total value
         // Lưu ý: fillPrice là nghìn VNĐ, newBalance là VNĐ, cần nhân 1000 khi tính positionsValue
         const positionsValue = updatedPositions.reduce((total, pos) => {
@@ -1745,21 +1768,21 @@ function TradingPage() {
         }, 0)
         const newTotalValue = newBalance + positionsValue
         setChallengeTotalValue(newTotalValue)
-        
+
         // Hiển thị thông báo thành công
         // fillPrice là nghìn VNĐ, cần nhân 1000 để hiển thị đúng
         const displayPrice = fillPrice * 1000
         const successMessage = `Đã khớp: ${fillQuantity} @ ${displayPrice.toLocaleString('vi-VN')} VNĐ`
-        
+
         showModal('Đặt lệnh thành công', successMessage, 'success')
-        
+
         // Reset form
         setOrderQuantity('')
-        
+
         setOrderSubmitting(false)
         return
       }
-      
+
       // REALTIME MODE: Gọi API
       // Backend chỉ chấp nhận MARKET hoặc LIMIT, nên MTL sẽ được gửi như MARKET
       // ATO và ATC đã được xử lý ở trên, không đến đây
@@ -1778,14 +1801,14 @@ function TradingPage() {
       // MTL không cần gửi price vì đã gửi như MARKET, backend sẽ tự lấy giá thị trường
 
       const response = await api.post('/portfolio/orders', orderData)
-      
+
       const successMessage = `Trạng thái: ${response.data.status}${response.data.filled_quantity > 0 ? `\nĐã khớp: ${response.data.filled_quantity} @ ${response.data.filled_price}` : ''}`
       showModal('Đặt lệnh thành công', successMessage, 'success')
-      
+
       // Reset form
       setOrderQuantity('')
       setOrderPrice('')
-      
+
       // Refresh portfolio
       const portfolioResponse = await api.get('/portfolio/summary')
       if (portfolioResponse.data) {
@@ -1812,18 +1835,18 @@ function TradingPage() {
       console.warn('Cannot expand chart:', { challengeActive, challengeCurrentDate, selectedStep })
       return
     }
-    
+
     console.log('Starting expandChartOnOrder with step:', selectedStep)
-    
+
     const current = new Date(challengeCurrentDate)
     let newDate = new Date(current)
     let newEndTime = '23:59'
-    
+
     // Lấy thời gian hiện tại từ endTime hoặc từ candle cuối cùng
     let currentTimeMinutes = 9 * 60 // Mặc định 9:00
     let currentHour = 9
     let currentMinute = 0
-    
+
     // Ưu tiên lấy từ challengeCurrentTimeRef (thời gian hiện tại đã được lưu)
     // Nếu ref chưa có giá trị, lấy từ endTime
     const currentTimeStr = challengeCurrentTimeRef.current || endTime || '09:00'
@@ -1836,47 +1859,47 @@ function TradingPage() {
       }
     } else {
       // Fallback: lấy từ candle cuối cùng
-    const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-    if (lastCandle && lastCandle.time) {
-      // Parse time từ candle (có thể là string hoặc timestamp)
-      let timeStr = ''
-      if (typeof lastCandle.time === 'string') {
-        // Format: "2025-12-19T14:45:00" hoặc "14:45:00"
-        if (lastCandle.time.includes('T')) {
-          timeStr = lastCandle.time.split('T')[1]?.split('.')[0] || ''
-        } else {
-          timeStr = lastCandle.time
+      const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+      if (lastCandle && lastCandle.time) {
+        // Parse time từ candle (có thể là string hoặc timestamp)
+        let timeStr = ''
+        if (typeof lastCandle.time === 'string') {
+          // Format: "2025-12-19T14:45:00" hoặc "14:45:00"
+          if (lastCandle.time.includes('T')) {
+            timeStr = lastCandle.time.split('T')[1]?.split('.')[0] || ''
+          } else {
+            timeStr = lastCandle.time
+          }
+        } else if (typeof lastCandle.time === 'number') {
+          // Timestamp (seconds hoặc milliseconds)
+          const date = new Date(lastCandle.time > 1e12 ? lastCandle.time : lastCandle.time * 1000)
+          const hours = String(date.getUTCHours()).padStart(2, '0')
+          const minutes = String(date.getUTCMinutes()).padStart(2, '0')
+          timeStr = `${hours}:${minutes}:00`
         }
-      } else if (typeof lastCandle.time === 'number') {
-        // Timestamp (seconds hoặc milliseconds)
-        const date = new Date(lastCandle.time > 1e12 ? lastCandle.time : lastCandle.time * 1000)
-        const hours = String(date.getUTCHours()).padStart(2, '0')
-        const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-        timeStr = `${hours}:${minutes}:00`
-      }
-      
-      if (timeStr) {
-        const [hour, minute] = timeStr.split(':').map(Number)
-        if (!isNaN(hour) && !isNaN(minute)) {
-          currentTimeMinutes = hour * 60 + minute
+
+        if (timeStr) {
+          const [hour, minute] = timeStr.split(':').map(Number)
+          if (!isNaN(hour) && !isNaN(minute)) {
+            currentTimeMinutes = hour * 60 + minute
             currentHour = hour
             currentMinute = minute
           }
         }
       }
     }
-    
+
     console.log('Current time:', { currentHour, currentMinute, currentTimeMinutes, endTime })
-    
+
     // Hàm helper để điều chỉnh thời gian sau khi nhảy (skip khoảng nghỉ trưa và cuối phiên)
     const adjustTimeAfterJump = (hour, minute, date) => {
       let adjustedHour = hour
       let adjustedMinute = minute
       let adjustedDate = new Date(date)
-      
+
       // Tính thời gian dưới dạng phút để dễ so sánh
       const timeInMinutes = adjustedHour * 60 + adjustedMinute
-      
+
       // Nếu rơi vào khoảng nghỉ trưa (11:30 - 12:59), nhảy đến 13:00
       if (timeInMinutes >= 11 * 60 + 30 && timeInMinutes < 13 * 60) {
         adjustedHour = 13
@@ -1916,10 +1939,10 @@ function TradingPage() {
         adjustedMinute = 0
         console.log('Before market open, jumping to 9:00')
       }
-      
+
       return { adjustedHour, adjustedMinute, adjustedDate }
     }
-    
+
     // Xử lý các bước nhảy mới
     if (selectedStep === '1p') {
       // Nhảy 1 phút
@@ -1929,7 +1952,7 @@ function TradingPage() {
         currentHour += 1
         if (currentHour >= 24) {
           currentHour = 0
-        newDate.setDate(newDate.getDate() + 1)
+          newDate.setDate(newDate.getDate() + 1)
         }
       }
       const adjusted = adjustTimeAfterJump(currentHour, currentMinute, newDate)
@@ -1989,7 +2012,7 @@ function TradingPage() {
       // Không nhận diện được bước nhảy
       return
     }
-    
+
     // Không vượt quá ngày kết thúc
     const endDateObj = new Date(challengeEndDate)
     if (newDate > endDateObj) {
@@ -1997,34 +2020,34 @@ function TradingPage() {
       // Nếu đã đến ngày kết thúc, đặt thời gian là cuối phiên chiều (14:45)
       newEndTime = '14:45'
     }
-    
+
     const newDateStr = newDate.toISOString().split('T')[0]
     // Nếu là ngày bắt đầu và endTime là 09:00, dùng challengeStartTime
     if (newDateStr === challengeStartDate && newEndTime === '09:00') {
       newEndTime = challengeStartTime
     }
-    
-    console.log('Calculated new time:', { 
-      oldDate: challengeCurrentDate, 
+
+    console.log('Calculated new time:', {
+      oldDate: challengeCurrentDate,
       oldTime: endTime,
-      newDateStr, 
+      newDateStr,
       newEndTime,
-      selectedStep 
+      selectedStep
     })
-    
+
     // QUAN TRỌNG: Cập nhật ref NGAY LẬP TỨC để lần nhảy tiếp theo có thể dùng giá trị mới
     // Ref được cập nhật đồng bộ, không phải async như state
     challengeCurrentTimeRef.current = newEndTime
-    
+
     // Cập nhật state để UI hiển thị đúng
     setChallengeCurrentDate(newDateStr)
     setEndDate(newDateStr)
     setEndTime(newEndTime)
-    
+
     // Set flag để tránh useEffect trigger fetch lại
     // QUAN TRỌNG: Set flag TRƯỚC khi update state để các useEffect có thể check flag
     isExpandingChartRef.current = true
-    
+
     // Fetch lại chart data với ngày mới ngay lập tức (TRƯỚC khi update state)
     // Sử dụng giá trị mới trực tiếp thay vì đợi state update
     // QUAN TRỌNG: Luôn fetch lại ngay cả khi cùng ngày (ví dụ: từ 9:45 -> 11:30)
@@ -2033,16 +2056,16 @@ function TradingPage() {
       const actualStartTime = '00:00'
       const actualEndDate = newDateStr
       const actualEndTime = newEndTime
-      
-      console.log('Expanding chart:', { 
-        actualStartDate, 
-        actualEndDate, 
+
+      console.log('Expanding chart:', {
+        actualStartDate,
+        actualEndDate,
         actualEndTime,
         currentDate: challengeCurrentDate,
         newDateStr,
         selectedStep
       })
-      
+
       // Build query params
       let url = `/ohlc/historical?symbol=${symbol}&interval=1m&limit=10000`
       if (actualStartDate) {
@@ -2055,15 +2078,15 @@ function TradingPage() {
         const endDateTime = `${actualEndDate}T${endTimeFormatted}+07:00`
         url += `&end_time=${encodeURIComponent(endDateTime)}`
       }
-      
+
       console.log('Fetching chart data with URL:', url)
-      
+
       // Fetch data mới (chỉ từ thời điểm hiện tại đến thời điểm mới)
       // Thay vì fetch lại toàn bộ, chỉ fetch phần mới để append vào chart
       const currentTimeStr = challengeCurrentTimeRef.current || endTime || '09:00'
       const [currentHour, currentMinute] = currentTimeStr.split(':').map(Number)
       const currentDateTime = `${challengeCurrentDate}T${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}:00+07:00`
-      
+
       // Fetch chỉ data mới từ thời điểm hiện tại đến thời điểm mới
       let incrementalUrl = `/ohlc/historical?symbol=${symbol}&interval=1m&limit=10000`
       incrementalUrl += `&start_time=${encodeURIComponent(currentDateTime)}`
@@ -2071,9 +2094,9 @@ function TradingPage() {
       const endTimeFormatted = endTimeParts.length === 2 ? `${newEndTime}:00` : newEndTime
       const endDateTime = `${newDateStr}T${endTimeFormatted}+07:00`
       incrementalUrl += `&end_time=${encodeURIComponent(endDateTime)}`
-      
+
       console.log('Fetching incremental data:', incrementalUrl)
-      
+
       api.get(incrementalUrl).then(response => {
         console.log('Incremental chart data response:', response.data.data?.length, 'candles')
         if (response.data.data && response.data.data.length > 0) {
@@ -2089,7 +2112,7 @@ function TradingPage() {
             }
             return time > 1e12 ? Math.floor(time / 1000) : time
           }
-          
+
           // Append các candle mới vào chart (không reset)
           response.data.data.forEach(c => {
             const candle = {
@@ -2101,19 +2124,19 @@ function TradingPage() {
               volume: parseFloat(c.volume) || 0,
               vwap: parseFloat(c.vwap) || 0
             }
-            
+
             const timestamp = normalizeTime(candle.time)
-            
+
             // Kiểm tra xem candle đã tồn tại chưa
             const existingIndex = historicalCandlesRef.current.findIndex(existing => {
               const existingTime = normalizeTime(existing.time)
               return Math.abs(existingTime - timestamp) < 60 // Trong vòng 1 phút
             })
-            
+
             if (existingIndex !== -1) {
               // Update candle hiện có
               historicalCandlesRef.current[existingIndex] = candle
-              
+
               // Update trên chart
               if (candlestickSeriesRef.current) {
                 candlestickSeriesRef.current.update({
@@ -2124,7 +2147,7 @@ function TradingPage() {
                   close: candle.close
                 })
               }
-              
+
               if (volumeSeriesRef.current) {
                 volumeSeriesRef.current.update({
                   time: timestamp,
@@ -2132,7 +2155,7 @@ function TradingPage() {
                   color: candle.close >= candle.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
                 })
               }
-              
+
               if (vwapSeriesRef.current && candle.vwap) {
                 vwapSeriesRef.current.update({
                   time: timestamp,
@@ -2142,7 +2165,7 @@ function TradingPage() {
             } else {
               // Append candle mới
               historicalCandlesRef.current.push(candle)
-              
+
               // Append vào chart series
               if (candlestickSeriesRef.current) {
                 candlestickSeriesRef.current.update({
@@ -2153,7 +2176,7 @@ function TradingPage() {
                   close: candle.close
                 })
               }
-              
+
               if (volumeSeriesRef.current) {
                 volumeSeriesRef.current.update({
                   time: timestamp,
@@ -2161,7 +2184,7 @@ function TradingPage() {
                   color: candle.close >= candle.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
                 })
               }
-              
+
               if (vwapSeriesRef.current && candle.vwap) {
                 vwapSeriesRef.current.update({
                   time: timestamp,
@@ -2170,7 +2193,7 @@ function TradingPage() {
               }
             }
           })
-          
+
           // Cập nhật legend với candle cuối cùng
           const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
           if (lastCandle) {
@@ -2182,24 +2205,24 @@ function TradingPage() {
               volume: (lastCandle.volume || 0).toLocaleString(),
             })
           }
-          
+
           console.log('Appended incremental data, total candles:', historicalCandlesRef.current.length)
-          
+
           // Cập nhật challenge total value sau khi append data mới
           if (challengePositions.length > 0) {
-              const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-              if (lastCandle && lastCandle.close) {
-                const currentPrice = parseFloat(lastCandle.close)
-                let positionsValue = 0
-                challengePositions.forEach(pos => {
+            const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+            if (lastCandle && lastCandle.close) {
+              const currentPrice = parseFloat(lastCandle.close)
+              let positionsValue = 0
+              challengePositions.forEach(pos => {
                 const price = pos.symbol === symbol ? currentPrice : (pos.avg_price || currentPrice)
                 positionsValue += pos.quantity * price * 1000
-                })
-                const newTotalValue = challengeBalance + positionsValue
-                setChallengeTotalValue(newTotalValue)
-              }
+              })
+              const newTotalValue = challengeBalance + positionsValue
+              setChallengeTotalValue(newTotalValue)
+            }
           }
-          
+
           setLoading(false)
         } else {
           console.warn('No incremental data received from API')
@@ -2229,7 +2252,7 @@ function TradingPage() {
     <div className="trading-page">
       <div className="page-header">
         <h1 className="page-title">Giao Dịch</h1>
-        <button 
+        <button
           className="ai-coach-toggle-btn"
           onClick={() => setAiCoachOpen(!aiCoachOpen)}
         >
@@ -2248,147 +2271,147 @@ function TradingPage() {
               </div>
             )}
           </div>
-          
+
           <div className="symbol-panel-content">
             <div className="symbol-search-section">
-            <div className="symbol-search-container">
-              <input
-                ref={searchInputRef}
-                id="symbol"
-                type="text"
-                value={isInputFocused ? searchTerm : symbol}
-                onChange={(e) => {
-                  const value = e.target.value.toUpperCase()
-                  setSearchTerm(value)
-                  setShowSuggestions(true)
-                  
-                  // Nếu value khớp với một symbol, tự động chọn
-                  if (symbols.includes(value)) {
-                    setSymbol(value)
-                    setSearchTerm('')
-                    setShowSuggestions(false)
-                    setIsInputFocused(false)
-                  }
-                }}
-                onFocus={() => {
-                  setSearchTerm('')
-                  setIsInputFocused(true)
-                  setShowSuggestions(true)
-                }}
-                onBlur={(e) => {
-                  // Delay để cho phép click vào suggestion
-                  setTimeout(() => {
-                    if (!suggestionsRef.current?.contains(document.activeElement)) {
-                      setShowSuggestions(false)
+              <div className="symbol-search-container">
+                <input
+                  ref={searchInputRef}
+                  id="symbol"
+                  type="text"
+                  value={isInputFocused ? searchTerm : symbol}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase()
+                    setSearchTerm(value)
+                    setShowSuggestions(true)
+
+                    // Nếu value khớp với một symbol, tự động chọn
+                    if (symbols.includes(value)) {
+                      setSymbol(value)
                       setSearchTerm('')
+                      setShowSuggestions(false)
                       setIsInputFocused(false)
                     }
-                  }, 200)
-                }}
+                  }}
+                  onFocus={() => {
+                    setSearchTerm('')
+                    setIsInputFocused(true)
+                    setShowSuggestions(true)
+                  }}
+                  onBlur={(e) => {
+                    // Delay để cho phép click vào suggestion
+                    setTimeout(() => {
+                      if (!suggestionsRef.current?.contains(document.activeElement)) {
+                        setShowSuggestions(false)
+                        setSearchTerm('')
+                        setIsInputFocused(false)
+                      }
+                    }, 200)
+                  }}
                   placeholder="Nhập mã CK để tìm kiếm..."
-                disabled={symbols.length === 0}
-                className="symbol-search-input"
-              />
-              {showSuggestions && symbols.length > 0 && (
-                <div 
-                  ref={suggestionsRef}
-                  className="symbol-suggestions"
-                >
-                  {symbols
-                    .filter(s => s.includes(searchTerm.toUpperCase()) || !searchTerm)
-                    .slice(0, 10) // Giới hạn 10 kết quả
-                    .map(s => (
-                      <div
-                        key={s}
-                        className={`suggestion-item ${s === symbol ? 'active' : ''}`}
+                  disabled={symbols.length === 0}
+                  className="symbol-search-input"
+                />
+                {showSuggestions && symbols.length > 0 && (
+                  <div
+                    ref={suggestionsRef}
+                    className="symbol-suggestions"
+                  >
+                    {symbols
+                      .filter(s => s.includes(searchTerm.toUpperCase()) || !searchTerm)
+                      .slice(0, 10) // Giới hạn 10 kết quả
+                      .map(s => (
+                        <div
+                          key={s}
+                          className={`suggestion-item ${s === symbol ? 'active' : ''}`}
+                          onClick={() => {
+                            setSymbol(s)
+                            setSearchTerm('')
+                            setShowSuggestions(false)
+                            searchInputRef.current?.blur()
+                          }}
+                        >
+                          {s}
+                        </div>
+                      ))}
+                    {symbols.filter(s => s.includes(searchTerm.toUpperCase()) || !searchTerm).length === 0 && (
+                      <div className="suggestion-item no-results">Không tìm thấy</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {popularSymbols.length > 0 && (
+                <div className="popular-symbols">
+                  <div className="popular-symbols-header">
+                    <span className="popular-symbols-label">Gợi ý nhanh:</span>
+                    <span className="popular-symbols-note">(Những mã có nguồn dữ liệu đầy đủ)</span>
+                  </div>
+                  <div className="popular-symbols-list">
+                    {popularSymbols.map(popSymbol => (
+                      <button
+                        key={popSymbol}
+                        type="button"
+                        className={`popular-symbol-btn ${popSymbol === symbol ? 'active' : ''}`}
                         onClick={() => {
-                          setSymbol(s)
+                          setSymbol(popSymbol)
                           setSearchTerm('')
                           setShowSuggestions(false)
-                          searchInputRef.current?.blur()
                         }}
                       >
-                        {s}
-                      </div>
+                        {popSymbol}
+                      </button>
                     ))}
-                  {symbols.filter(s => s.includes(searchTerm.toUpperCase()) || !searchTerm).length === 0 && (
-                    <div className="suggestion-item no-results">Không tìm thấy</div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>
-              
-            {popularSymbols.length > 0 && (
-              <div className="popular-symbols">
-                <div className="popular-symbols-header">
-                  <span className="popular-symbols-label">Gợi ý nhanh:</span>
-                  <span className="popular-symbols-note">(Những mã có nguồn dữ liệu đầy đủ)</span>
-                </div>
-                <div className="popular-symbols-list">
-                  {popularSymbols.map(popSymbol => (
-                    <button
-                      key={popSymbol}
-                      type="button"
-                      className={`popular-symbol-btn ${popSymbol === symbol ? 'active' : ''}`}
-                      onClick={() => {
-                        setSymbol(popSymbol)
-                        setSearchTerm('')
-                        setShowSuggestions(false)
-                      }}
-                    >
-                      {popSymbol}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-        </div>
-        
+
             {/* Thông tin công ty */}
             {companyInfo && (
               <div className="company-info-panel">
                 <div className="company-info-header">
                   <h4>Thông tin công ty</h4>
-                  </div>
+                </div>
                 <div className="company-info-content">
                   {companyInfo.company_name && (
                     <div className="company-info-item highlight">
                       <span className="company-info-label">Tên công ty:</span>
                       <span className="company-info-value">{companyInfo.company_name}</span>
-                </div>
+                    </div>
                   )}
                   <div className="company-info-grid">
                     {companyInfo.sector && (
                       <div className="company-info-item">
                         <span className="company-info-label">Ngành:</span>
                         <span className="company-info-value">{companyInfo.sector}</span>
-                </div>
+                      </div>
                     )}
                     {companyInfo.industry && (
                       <div className="company-info-item">
                         <span className="company-info-label">Lĩnh vực:</span>
                         <span className="company-info-value">{companyInfo.industry}</span>
-                </div>
+                      </div>
                     )}
                     {companyInfo.exchange && (
                       <div className="company-info-item">
                         <span className="company-info-label">Sàn:</span>
                         <span className="company-info-value">{companyInfo.exchange}</span>
-                </div>
+                      </div>
                     )}
                     {companyInfo.lot_size && (
                       <div className="company-info-item">
                         <span className="company-info-label">Khối lượng lô:</span>
                         <span className="company-info-value">{companyInfo.lot_size}</span>
-              </div>
-                          )}
-                        </div>
-                    </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
+            )}
+          </div>
         </div>
-        
+
         <div className="date-filter-wrapper">
           <div className="date-filter">
             <div className="date-filter-item">
@@ -2444,7 +2467,7 @@ function TradingPage() {
                     setStartTime('00:00')
                     setEndDate('')
                     setEndTime('23:59')
-      challengeCurrentTimeRef.current = '23:59'
+                    challengeCurrentTimeRef.current = '23:59'
                   }}
                   className="clear-date-btn"
                 >
@@ -2457,8 +2480,8 @@ function TradingPage() {
       </div>
 
       <div className="chart-and-panel-container">
-        <div 
-          className="chart-container" 
+        <div
+          className="chart-container"
           ref={chartContainerRef}
           key={`${symbol}-${challengeActive}`}
         >
@@ -2474,15 +2497,15 @@ function TradingPage() {
             <span className="legend-item">V: <span className="legend-val">{legendData.volume}</span></span>
           </div>
         </div>
-        
+
         <div className="trading-panel">
-        {/* Order Form */}
-        <div className="order-form">
+          {/* Order Form */}
+          <div className="order-form">
             {challengeActive ? (
               /* Challenge Mode: Chỉ hiển thị số lượng và nút MUA/BÁN */
               <>
                 {/* Symbol Input */}
-            <div className="order-form-group">
+                <div className="order-form-group">
                   <div className="symbol-input-wrapper">
                     <input
                       type="text"
@@ -2500,8 +2523,8 @@ function TradingPage() {
                       </button>
                     )}
                   </div>
-            </div>
-            
+                </div>
+
                 {/* Buying Power */}
                 <div className="buying-power-group">
                   <label>Sức mua:</label>
@@ -2511,120 +2534,124 @@ function TradingPage() {
                 </div>
 
                 {/* Quantity Input */}
-            <div className="order-form-group">
+                <div className="order-form-group">
                   <label htmlFor="order-quantity">KL đặt</label>
                   <div className="quantity-input-wrapper">
-                    <input
-                      id="order-quantity"
-                      type="number"
-                      value={orderQuantity}
-                      onChange={(e) => setOrderQuantity(e.target.value)}
-                      className="order-input quantity-input"
-                      placeholder="Nhập số lượng"
-                      min="0"
-                    />
-                    <button
-                      className="btn-adjust"
-                      onClick={() => {
-                        const currentQty = parseInt(orderQuantity) || 0
-                        if (currentQty > 0) {
-                          setOrderQuantity((currentQty - 1).toString())
-                        }
-                      }}
-                    >
-                      −
-                    </button>
-                    <button
-                      className="btn-adjust"
-                      onClick={() => {
-                        const currentQty = parseInt(orderQuantity) || 0
-                        setOrderQuantity((currentQty + 1).toString())
-                      }}
-                    >
-                      +
-                    </button>
-            </div>
-          </div>
+                    <div className="quantity-row">
+                      <input
+                        id="order-quantity"
+                        type="number"
+                        value={orderQuantity}
+                        onChange={(e) => setOrderQuantity(e.target.value)}
+                        className="order-input quantity-input"
+                        placeholder="Nhập số lượng"
+                        min="0"
+                      />
+                      <div className="quantity-buttons">
+                        <button
+                          className="btn-adjust"
+                          onClick={() => {
+                            const currentQty = parseInt(orderQuantity) || 0
+                            if (currentQty > 0) {
+                              setOrderQuantity((currentQty - 1).toString())
+                            }
+                          }}
+                        >
+                          −
+                        </button>
+                        <button
+                          className="btn-adjust"
+                          onClick={() => {
+                            const currentQty = parseInt(orderQuantity) || 0
+                            setOrderQuantity((currentQty + 1).toString())
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-              {/* Order Action Buttons */}
-              <div className="order-action-buttons">
-                <button
-                  className={`order-action-btn buy-btn ${orderSide === 'BUY' ? 'active' : ''}`}
-                  onClick={() => {
-                    setOrderSide('BUY')
-                    handleSubmitOrder('BUY')
-                  }}
-                  disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0}
-                >
-                  MUA
-                </button>
-                <button
-                  className={`order-action-btn sell-btn ${orderSide === 'SELL' ? 'active' : ''}`}
-                  onClick={() => {
-                    setOrderSide('SELL')
-                    handleSubmitOrder('SELL')
-                  }}
-                  disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0}
-                >
-                  BÁN
-                </button>
-              </div>
-
-              {/* Bước nhảy thời gian - Chỉ hiển thị trong challenge mode */}
-              <div className="challenge-time-step">
-                <label>Bước nhảy thời gian:</label>
-                <div className="step-buttons-grid">
-                  <button 
-                    className="step-btn"
-                    onClick={() => handleStepSelection('1p')}
-                    title="Nhảy 1 phút"
+                {/* Order Action Buttons */}
+                <div className="order-action-buttons">
+                  <button
+                    className={`order-action-btn buy-btn ${orderSide === 'BUY' ? 'active' : ''}`}
+                    onClick={() => {
+                      setOrderSide('BUY')
+                      handleSubmitOrder('BUY')
+                    }}
+                    disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0}
                   >
-                    +1p
+                    MUA
                   </button>
-                  <button 
-                    className="step-btn"
-                    onClick={() => handleStepSelection('5p')}
-                    title="Nhảy 5 phút"
+                  <button
+                    className={`order-action-btn sell-btn ${orderSide === 'SELL' ? 'active' : ''}`}
+                    onClick={() => {
+                      setOrderSide('SELL')
+                      handleSubmitOrder('SELL')
+                    }}
+                    disabled={orderSubmitting || !orderQuantity || parseInt(orderQuantity) === 0}
                   >
-                    +5p
-                  </button>
-                  <button 
-                    className="step-btn"
-                    onClick={() => handleStepSelection('30p')}
-                    title="Nhảy 30 phút"
-                  >
-                    +30p
-                  </button>
-                  <button 
-                    className="step-btn"
-                    onClick={() => handleStepSelection('1h')}
-                    title="Nhảy 1 giờ"
-                  >
-                    +1h
-                  </button>
-                  <button 
-                    className="step-btn"
-                    onClick={() => handleStepSelection('1d')}
-                    title="Nhảy 1 ngày"
-                  >
-                    +1d
+                    BÁN
                   </button>
                 </div>
-              </div>
-            </>
-          ) : (
-            /* Realtime Mode: Giữ nguyên UI cũ */
-            <>
+
+                {/* Bước nhảy thời gian - Chỉ hiển thị trong challenge mode */}
+                <div className="challenge-time-step">
+                  <label>Bước nhảy thời gian:</label>
+                  <div className="step-buttons-grid">
+                    <button
+                      className="step-btn"
+                      onClick={() => handleStepSelection('1p')}
+                      title="Nhảy 1 phút"
+                    >
+                      +1p
+                    </button>
+                    <button
+                      className="step-btn"
+                      onClick={() => handleStepSelection('5p')}
+                      title="Nhảy 5 phút"
+                    >
+                      +5p
+                    </button>
+                    <button
+                      className="step-btn"
+                      onClick={() => handleStepSelection('30p')}
+                      title="Nhảy 30 phút"
+                    >
+                      +30p
+                    </button>
+                    <button
+                      className="step-btn"
+                      onClick={() => handleStepSelection('1h')}
+                      title="Nhảy 1 giờ"
+                    >
+                      +1h
+                    </button>
+                    <button
+                      className="step-btn"
+                      onClick={() => handleStepSelection('1d')}
+                      title="Nhảy 1 ngày"
+                    >
+                      +1d
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Realtime Mode: Giữ nguyên UI cũ */
+              <>
                 {/* Symbol Input */}
-            <div className="order-form-group">
+                <div className="order-form-group">
                   <div className="symbol-input-wrapper">
-              <input
-                type="text"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                    <input
+                      type="text"
+                      value={symbol}
+                      onChange={(e) => setSymbol(e.target.value.toUpperCase())}
                       className="order-input symbol-input"
-                placeholder="Nhập mã CK"
-              />
+                      placeholder="Nhập mã CK"
+                    />
                     {symbol && (
                       <button
                         className="clear-symbol-btn"
@@ -2634,21 +2661,21 @@ function TradingPage() {
                       </button>
                     )}
                   </div>
-            </div>
-            
+                </div>
+
                 {/* Buying Power - Số tiền khả dụng */}
                 <div className="buying-power-group">
                   <label>Sức mua:</label>
                   <div className="buying-power-input">
                     <span>{(portfolio ? parseFloat(portfolio.cash_balance || 0) : 0).toLocaleString('vi-VN')} VNĐ</span>
-                    <button 
-                      className="btn-plus" 
+                    <button
+                      className="btn-plus"
                       onClick={() => {
                         // Tính và set số lượng tối đa có thể mua dựa trên số tiền
                         if (orderSide === 'BUY') {
                           const availableBalance = portfolio ? parseFloat(portfolio.cash_balance || 0) : 0
                           let price = 0
-                          
+
                           if (orderType === 'LIMIT' || orderType === 'MTL') {
                             price = parseFloat(orderPrice) || 0
                           } else {
@@ -2657,7 +2684,7 @@ function TradingPage() {
                               price = parseFloat(lastCandle.close)
                             }
                           }
-                          
+
                           if (price > 0) {
                             const maxQty = Math.floor(availableBalance / (price * 1000))
                             setOrderQuantity(maxQty.toString())
@@ -2667,82 +2694,82 @@ function TradingPage() {
                     >
                       +
                     </button>
-            </div>
-          </div>
+                  </div>
+                </div>
 
-              {/* Order Type Buttons */}
-              <div className="order-type-buttons">
-                <button
-                  className={`order-type-btn ${orderType === 'LIMIT' ? 'active' : ''}`}
-                  onClick={() => {
-                    setOrderType('LIMIT')
-                    if (!orderPrice && historicalCandlesRef.current.length > 0) {
-                      const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-                      if (lastCandle && lastCandle.close) {
-                        setOrderPrice(parseFloat(lastCandle.close).toString())
-                      }
-                    }
-                  }}
-                >
-                  LO
-                </button>
-                <button
-                  className={`order-type-btn ${orderType === 'MTL' ? 'active' : ''}`}
-                  onClick={() => {
-                    setOrderType('MTL')
-                    setOrderPrice('')
-                  }}
-                >
-                  MTL
-                </button>
-                {/* ATO/ATC chỉ hiển thị trong Realtime mode, không hiển thị trong Challenge mode */}
-                {!challengeActive && (() => {
-                  const session = getCurrentSession()
-                  const showATO = session === 'ATO_SESSION' || session === 'OUT_OF_MARKET'
-                  return showATO ? (
-                    <button
-                      className={`order-type-btn ${orderType === 'ATO' ? 'active' : ''}`}
-                      onClick={() => {
-                        setOrderType('ATO')
-                        setOrderPrice('')
-                      }}
-                    >
-                      ATO
-                    </button>
-                  ) : null
-                })()}
-                {!challengeActive && (
+                {/* Order Type Buttons */}
+                <div className="order-type-buttons">
                   <button
-                    className={`order-type-btn ${orderType === 'ATC' ? 'active' : ''}`}
+                    className={`order-type-btn ${orderType === 'LIMIT' ? 'active' : ''}`}
                     onClick={() => {
-                      setOrderType('ATC')
-                      setOrderPrice('')
-                      const session = getCurrentSession()
-                      if (session === 'CONTINUOUS_SESSION') {
-                        showModal('Thông báo', 'Lệnh ATC sẽ được treo và chỉ khớp sau 14:45 dựa trên giá đóng cửa', 'info')
+                      setOrderType('LIMIT')
+                      if (!orderPrice && historicalCandlesRef.current.length > 0) {
+                        const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                        if (lastCandle && lastCandle.close) {
+                          setOrderPrice(parseFloat(lastCandle.close).toString())
+                        }
                       }
                     }}
                   >
-                    ATC
+                    LO
                   </button>
-                )}
-              </div>
+                  <button
+                    className={`order-type-btn ${orderType === 'MTL' ? 'active' : ''}`}
+                    onClick={() => {
+                      setOrderType('MTL')
+                      setOrderPrice('')
+                    }}
+                  >
+                    MTL
+                  </button>
+                  {/* ATO/ATC chỉ hiển thị trong Realtime mode, không hiển thị trong Challenge mode */}
+                  {!challengeActive && (() => {
+                    const session = getCurrentSession()
+                    const showATO = session === 'ATO_SESSION' || session === 'OUT_OF_MARKET'
+                    return showATO ? (
+                      <button
+                        className={`order-type-btn ${orderType === 'ATO' ? 'active' : ''}`}
+                        onClick={() => {
+                          setOrderType('ATO')
+                          setOrderPrice('')
+                        }}
+                      >
+                        ATO
+                      </button>
+                    ) : null
+                  })()}
+                  {!challengeActive && (
+                    <button
+                      className={`order-type-btn ${orderType === 'ATC' ? 'active' : ''}`}
+                      onClick={() => {
+                        setOrderType('ATC')
+                        setOrderPrice('')
+                        const session = getCurrentSession()
+                        if (session === 'CONTINUOUS_SESSION') {
+                          showModal('Thông báo', 'Lệnh ATC sẽ được treo và chỉ khớp sau 14:45 dựa trên giá đóng cửa', 'info')
+                        }
+                      }}
+                    >
+                      ATC
+                    </button>
+                  )}
+                </div>
 
                 {/* Price Input - Chỉ hiển thị cho LO (LIMIT) */}
-          {orderType === 'LIMIT' && (
-              <div className="order-form-group">
+                {orderType === 'LIMIT' && (
+                  <div className="order-form-group">
                     <label htmlFor="order-price">Giá đặt</label>
                     <div className="price-input-wrapper">
-                <input
-                  id="order-price"
-                  type="number"
-                  value={orderPrice}
-                  onChange={(e) => setOrderPrice(e.target.value)}
+                      <input
+                        id="order-price"
+                        type="number"
+                        value={orderPrice}
+                        onChange={(e) => setOrderPrice(e.target.value)}
                         className="order-input price-input"
-                  placeholder="Nhập giá"
-                  min="0"
-                  step="0.01"
-                />
+                        placeholder="Nhập giá"
+                        min="0"
+                        step="0.01"
+                      />
                       <button
                         className="btn-match"
                         onClick={() => {
@@ -2775,112 +2802,88 @@ function TradingPage() {
                       >
                         +
                       </button>
-              </div>
-            </div>
-          )}
+                    </div>
+                  </div>
+                )}
 
-              {/* Quantity Input */}
-              <div className="order-form-group">
-                <label htmlFor="order-quantity">KL đặt</label>
-                <div className="quantity-input-wrapper">
-                  <input
-                    id="order-quantity"
-                    type="number"
-                    value={orderQuantity}
-                    onChange={(e) => setOrderQuantity(e.target.value)}
-                    className="order-input quantity-input"
-                    placeholder="Nhập số lượng"
-                    min="0"
-                  />
-                  {orderQuantity && parseInt(orderQuantity) === 0 && (
-                    <span className="error-message">KL không hợp lệ</span>
-                  )}
-                  <button
-                    className="btn-adjust"
-                    onClick={() => {
-                      const currentQty = parseInt(orderQuantity) || 0
-                      if (currentQty > 0) {
-                        setOrderQuantity((currentQty - 1).toString())
-                      }
-                    }}
-                  >
-                    −
-                  </button>
-                  <button
-                    className="btn-adjust"
-                    onClick={() => {
-                      const currentQty = parseInt(orderQuantity) || 0
-                      setOrderQuantity((currentQty + 1).toString())
-                    }}
-                  >
-                    +
-                  </button>
+                {/* Quantity Input */}
+                <div className="order-form-group">
+                  <label htmlFor="order-quantity">KL đặt</label>
+                  <div className="quantity-input-wrapper">
+                    <div className="quantity-row">
+                      <input
+                        id="order-quantity"
+                        type="number"
+                        value={orderQuantity}
+                        onChange={(e) => setOrderQuantity(e.target.value)}
+                        className="order-input quantity-input"
+                        placeholder="Nhập số lượng"
+                        min="0"
+                      />
+                      <div className="quantity-buttons">
+                        <button
+                          className="btn-adjust"
+                          onClick={() => {
+                            const currentQty = parseInt(orderQuantity) || 0
+                            if (currentQty > 0) {
+                              setOrderQuantity((currentQty - 1).toString())
+                            }
+                          }}
+                        >
+                          −
+                        </button>
+                        <button
+                          className="btn-adjust"
+                          onClick={() => {
+                            const currentQty = parseInt(orderQuantity) || 0
+                            setOrderQuantity((currentQty + 1).toString())
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    {orderQuantity && parseInt(orderQuantity) === 0 && (
+                      <span className="error-message">KL không hợp lệ</span>
+                    )}
+                  </div>
                 </div>
-              </div>
 
                 {/* Chỉ hiển thị chế độ khi không có challenge */}
-            <div className="order-form-row">
-              <div className="order-form-group">
-                <label htmlFor="order-mode">Chế độ:</label>
-                <select
-                  id="order-mode"
-                  defaultValue="REALTIME"
-                  className="order-select"
-                  disabled
-                >
-                  <option value="REALTIME">Real-time</option>
-                </select>
-                <span className="order-hint">Chế độ thực hành chỉ có trong Thử thách đầu tư</span>
-              </div>
-            </div>
-
-          {/* Ẩn nút đặt lệnh khi đang xem dữ liệu quá khứ */}
-          {(() => {
-            const today = new Date().toISOString().split('T')[0]
-            
-            // Realtime mode: chỉ ẩn khi có date filter VÀ endDate là quá khứ
-              if ((startDate || endDate) && endDate && endDate < today) {
-              return (
-                <div className="order-disabled-message">
-                      <p>Không thể đặt lệnh khi đang xem dữ liệu quá khứ. Vui lòng chọn ngày hiện tại hoặc tương lai, hoặc bỏ date filter để xem realtime.</p>
+                <div className="order-form-row">
+                  <div className="order-form-group">
+                    <label htmlFor="order-mode">Chế độ:</label>
+                    <select
+                      id="order-mode"
+                      defaultValue="REALTIME"
+                      className="order-select"
+                      disabled
+                    >
+                      <option value="REALTIME">Real-time</option>
+                    </select>
+                    <span className="order-hint">Chế độ thực hành chỉ có trong Thử thách đầu tư</span>
+                  </div>
                 </div>
-              )
-            }
-                
-                // Tính giá trị lệnh
-                const calculateOrderValue = () => {
-                  if (!orderQuantity || parseInt(orderQuantity) === 0) return 0
-                  const qty = parseInt(orderQuantity)
-                  let price = 0
-                  
-                  if (orderType === 'LIMIT') {
-                    price = parseFloat(orderPrice) || 0
-                  } else if (orderType === 'MTL') {
-                    // MTL: Lấy giá mới nhất từ chart
-                    const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-                    if (lastCandle && lastCandle.close) {
-                      price = parseFloat(lastCandle.close)
-                    }
-                  } else {
-                    // MARKET, ATO, ATC - lấy giá từ candle cuối cùng
-                    const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
-                    if (lastCandle && lastCandle.close) {
-                      price = parseFloat(lastCandle.close)
-                    }
+
+                {/* Ẩn nút đặt lệnh khi đang xem dữ liệu quá khứ */}
+                {(() => {
+                  const today = new Date().toISOString().split('T')[0]
+
+                  // Realtime mode: chỉ ẩn khi có date filter VÀ endDate là quá khứ
+                  if ((startDate || endDate) && endDate && endDate < today) {
+                    return (
+                      <div className="order-disabled-message">
+                        <p>Không thể đặt lệnh khi đang xem dữ liệu quá khứ. Vui lòng chọn ngày hiện tại hoặc tương lai, hoặc bỏ date filter để xem realtime.</p>
+                      </div>
+                    )
                   }
-                  
-                  // Giá từ ClickHouse là nghìn VNĐ, cần nhân 1000
-                  return price * qty * 1000
-                }
-                
-                const orderValue = calculateOrderValue()
-                
-                // Tính số lượng tối đa có thể mua/bán
-                const calculateMaxQuantity = () => {
-                  if (orderSide === 'BUY') {
-                    const availableBalance = portfolio ? parseFloat(portfolio.cash_balance || 0) : 0
+
+                  // Tính giá trị lệnh
+                  const calculateOrderValue = () => {
+                    if (!orderQuantity || parseInt(orderQuantity) === 0) return 0
+                    const qty = parseInt(orderQuantity)
                     let price = 0
-                    
+
                     if (orderType === 'LIMIT') {
                       price = parseFloat(orderPrice) || 0
                     } else if (orderType === 'MTL') {
@@ -2890,28 +2893,56 @@ function TradingPage() {
                         price = parseFloat(lastCandle.close)
                       }
                     } else {
+                      // MARKET, ATO, ATC - lấy giá từ candle cuối cùng
                       const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
                       if (lastCandle && lastCandle.close) {
                         price = parseFloat(lastCandle.close)
                       }
                     }
-                    
-                    if (price === 0) return 0
-                    // Giá là nghìn VNĐ, balance là VNĐ
-                    return Math.floor(availableBalance / (price * 1000))
-                  } else {
-                    // SELL - lấy từ positions
-                    const existing = positions.find(p => p.symbol === symbol)
-                    return existing ? existing.quantity : 0
+
+                    // Giá từ ClickHouse là nghìn VNĐ, cần nhân 1000
+                    return price * qty * 1000
                   }
-                }
-                
-                const maxQuantity = calculateMaxQuantity()
-            
-            return (
+
+                  const orderValue = calculateOrderValue()
+
+                  // Tính số lượng tối đa có thể mua/bán
+                  const calculateMaxQuantity = () => {
+                    if (orderSide === 'BUY') {
+                      const availableBalance = portfolio ? parseFloat(portfolio.cash_balance || 0) : 0
+                      let price = 0
+
+                      if (orderType === 'LIMIT') {
+                        price = parseFloat(orderPrice) || 0
+                      } else if (orderType === 'MTL') {
+                        // MTL: Lấy giá mới nhất từ chart
+                        const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                        if (lastCandle && lastCandle.close) {
+                          price = parseFloat(lastCandle.close)
+                        }
+                      } else {
+                        const lastCandle = historicalCandlesRef.current[historicalCandlesRef.current.length - 1]
+                        if (lastCandle && lastCandle.close) {
+                          price = parseFloat(lastCandle.close)
+                        }
+                      }
+
+                      if (price === 0) return 0
+                      // Giá là nghìn VNĐ, balance là VNĐ
+                      return Math.floor(availableBalance / (price * 1000))
+                    } else {
+                      // SELL - lấy từ positions
+                      const existing = positions.find(p => p.symbol === symbol)
+                      return existing ? existing.quantity : 0
+                    }
+                  }
+
+                  const maxQuantity = calculateMaxQuantity()
+
+                  return (
                     <>
                       <div className="order-action-buttons">
-              <button
+                        <button
                           className={`order-action-btn buy-btn ${orderSide === 'BUY' ? 'active' : ''}`}
                           onClick={() => {
                             setOrderSide('BUY')
@@ -2921,7 +2952,7 @@ function TradingPage() {
                         >
                           MUA
                           <span className="order-value">Giá trị: {orderValue > 0 ? orderValue.toLocaleString('vi-VN') : '-'}</span>
-              </button>
+                        </button>
                         <button
                           className={`order-action-btn sell-btn ${orderSide === 'SELL' ? 'active' : ''}`}
                           onClick={() => {
@@ -2939,40 +2970,40 @@ function TradingPage() {
                         <span>Bán tối đa: {orderSide === 'SELL' ? maxQuantity : 0}</span>
                       </div>
                     </>
-            )
-          })()}
+                  )
+                })()}
               </>
             )}
-        </div>
-
-        {/* Positions */}
-        {positions.length > 0 && (
-          <div className="positions-section">
-            <h3>Vị thế hiện tại</h3>
-            <div className="positions-list">
-              {positions.map(pos => (
-                <div key={pos.id} className="position-item">
-                  <div className="position-header">
-                    <span className="position-symbol">{pos.symbol}</span>
-                    <span className={`position-pnl ${parseFloat(pos.unrealized_pnl || 0) >= 0 ? 'positive' : 'negative'}`}>
-                      {parseFloat(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{parseFloat(pos.unrealized_pnl || 0).toLocaleString('vi-VN')} VNĐ
-                    </span>
-                  </div>
-                  <div className="position-details">
-                    <span>Số lượng: {pos.quantity}</span>
-                    <span>Giá TB: {parseFloat(pos.avg_price || 0).toLocaleString('vi-VN')} VNĐ</span>
-                    {pos.last_price && (
-                      <span>Giá hiện tại: {parseFloat(pos.last_price).toLocaleString('vi-VN')} VNĐ</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
-        )}
+
+          {/* Positions */}
+          {positions.length > 0 && (
+            <div className="positions-section">
+              <h3>Vị thế hiện tại</h3>
+              <div className="positions-list">
+                {positions.map(pos => (
+                  <div key={pos.id} className="position-item">
+                    <div className="position-header">
+                      <span className="position-symbol">{pos.symbol}</span>
+                      <span className={`position-pnl ${parseFloat(pos.unrealized_pnl || 0) >= 0 ? 'positive' : 'negative'}`}>
+                        {parseFloat(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{parseFloat(pos.unrealized_pnl || 0).toLocaleString('vi-VN')} VNĐ
+                      </span>
+                    </div>
+                    <div className="position-details">
+                      <span>Số lượng: {pos.quantity}</span>
+                      <span>Giá TB: {parseFloat(pos.avg_price || 0).toLocaleString('vi-VN')} VNĐ</span>
+                      {pos.last_price && (
+                        <span>Giá hiện tại: {parseFloat(pos.last_price).toLocaleString('vi-VN')} VNĐ</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      
+
       {/* Thử thách đầu tư */}
       <div className="challenge-section">
         <div className="challenge-section-header">
@@ -2985,7 +3016,7 @@ function TradingPage() {
             Luật chơi
           </button>
         </div>
-        
+
         {/* Portfolio Info trong challenge - Hiển thị ở đầu khi challenge active */}
         {challengeActive && (
           <div className="portfolio-info challenge-portfolio challenge-portfolio-spacing">
@@ -3009,7 +3040,7 @@ function TradingPage() {
                 </span>
               </div>
             </div>
-            
+
             {/* Số lượng đã mua */}
             {challengePositions.length > 0 && (
               <div className="challenge-positions">
@@ -3029,7 +3060,7 @@ function TradingPage() {
             )}
           </div>
         )}
-        
+
         {!challengeActive ? (
           <div className="challenge-setup">
             <div className="challenge-form">
@@ -3107,14 +3138,14 @@ function TradingPage() {
           </div>
         )}
       </div>
-      
+
       {/* AI Coach Panel */}
       {aiCoachOpen && (
         <div className="ai-coach-panel">
           <AICoach symbol={symbol} onClose={() => setAiCoachOpen(false)} />
         </div>
       )}
-      
+
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -3123,7 +3154,7 @@ function TradingPage() {
       >
         {modalMessage}
       </Modal>
-      
+
       {/* Rules Modal */}
       <Modal
         isOpen={rulesModalOpen}
@@ -3134,7 +3165,7 @@ function TradingPage() {
         <div className="rules-content">
           <h4>1. Mục đích</h4>
           <p>Thử thách đầu tư là chế độ thực hành giúp bạn học cách giao dịch chứng khoán trong môi trường mô phỏng với dữ liệu lịch sử thực tế.</p>
-          
+
           <h4>2. Cách chơi</h4>
           <ul>
             <li><strong>Chọn ngày bắt đầu:</strong> Bạn có thể chọn bất kỳ ngày nào trong quá khứ để bắt đầu thử thách (Hiện tại bộ dữ liệu hỗ trợ từ ngày 11-09-2023)</li>
@@ -3142,7 +3173,7 @@ function TradingPage() {
             <li><strong>Vốn được cấp:</strong> 10.000.000 VNĐ (mười triệu đồng)</li>
             <li><strong>Đặt lệnh:</strong> Trong chế độ thử thách, tất cả các lệnh sẽ được khớp ngay lập tức tại giá hiện tại trên biểu đồ</li>
           </ul>
-          
+
           <h4>3. Bước nhảy thời gian</h4>
           <ul>
             <li>Bạn có thể nhảy thời gian bằng các nút: <strong>+1p, +5p, +30p, +1h, +1d</strong></li>
@@ -3150,14 +3181,14 @@ function TradingPage() {
             <li>Khi đến cuối phiên chiều (14:45), bước nhảy tiếp theo sẽ chuyển sang ngày giao dịch tiếp theo (bỏ qua thứ 7 và chủ nhật)</li>
             <li>Sau khi nhảy, bạn không thể quay lại thời điểm trước đó</li>
           </ul>
-          
+
           <h4>4. Kết thúc thử thách</h4>
           <ul>
             <li>Thử thách sẽ tự động kết thúc khi hết thời gian đã chọn</li>
             <li>Bạn có thể kết thúc sớm bằng nút "Kết thúc thử thách"</li>
             <li>Hệ thống sẽ tính toán lãi/lỗ dựa trên số dư tiền mặt và giá trị các vị thế tại thời điểm kết thúc</li>
           </ul>
-          
+
           <h4>5. Lưu ý</h4>
           <ul>
             <li>Tất cả các lệnh trong chế độ thử thách đều được khớp ngay lập tức</li>
@@ -3166,9 +3197,9 @@ function TradingPage() {
             <li>Thử thách chỉ tính các ngày giao dịch (thứ 2 - thứ 6), không tính thứ 7 và chủ nhật</li>
             <li>Chúc bạn may mắn!</li>
           </ul>
-              </div>
+        </div>
       </Modal>
-      
+
     </div>
   )
 }
