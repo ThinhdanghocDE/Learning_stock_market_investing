@@ -17,6 +17,10 @@ class LessonService:
     def can_access_lesson(db: Session, user_id: int, lesson: Lesson) -> tuple[bool, Optional[str]]:
         """
         Kiểm tra user có thể truy cập lesson không
+        Logic:
+        - BEGINNER: Luôn mở khóa
+        - INTERMEDIATE: Cần hoàn thành TẤT CẢ bài học BEGINNER
+        - ADVANCED: Cần hoàn thành TẤT CẢ bài học INTERMEDIATE
         Returns: (can_access, error_message)
         """
         user = UserRepository.get_by_id(db, user_id)
@@ -26,8 +30,35 @@ class LessonService:
         if not lesson.is_active:
             return False, "Lesson is not active"
         
-        if user.experience_points < lesson.required_points:
-            return False, f"Required {lesson.required_points} experience points. You have {user.experience_points}"
+        difficulty = lesson.difficulty_level
+        
+        # BEGINNER: Luôn có thể truy cập
+        if difficulty == "BEGINNER":
+            return True, None
+        
+        # INTERMEDIATE: Cần hoàn thành tất cả BEGINNER
+        if difficulty == "INTERMEDIATE":
+            # Lấy tất cả bài học BEGINNER đang active
+            beginner_lessons = LessonRepository.get_by_difficulty(db, "BEGINNER")
+            if beginner_lessons:
+                # Kiểm tra user đã hoàn thành tất cả chưa
+                for bl in beginner_lessons:
+                    progress = LessonRepository.get_progress(db, user_id, bl.id)
+                    if not progress or progress.status != "COMPLETED":
+                        return False, f"Bạn cần hoàn thành tất cả bài học Cơ bản trước. Hãy hoàn thành bài '{bl.title}'."
+            return True, None
+        
+        # ADVANCED: Cần hoàn thành tất cả INTERMEDIATE
+        if difficulty == "ADVANCED":
+            # Lấy tất cả bài học INTERMEDIATE đang active
+            intermediate_lessons = LessonRepository.get_by_difficulty(db, "INTERMEDIATE")
+            if intermediate_lessons:
+                # Kiểm tra user đã hoàn thành tất cả chưa
+                for il in intermediate_lessons:
+                    progress = LessonRepository.get_progress(db, user_id, il.id)
+                    if not progress or progress.status != "COMPLETED":
+                        return False, f"Bạn cần hoàn thành tất cả bài học Trung bình trước. Hãy hoàn thành bài '{il.title}'."
+            return True, None
         
         return True, None
     
