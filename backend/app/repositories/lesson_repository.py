@@ -5,7 +5,8 @@ Lesson Repository - Data Access Layer
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.models.lesson import Lesson, LessonProgress
-from typing import List, Optional
+from app.schemas.lesson import LessonCreate, LessonUpdate
+from typing import List, Optional, Dict, Any
 
 
 class LessonRepository:
@@ -23,6 +24,32 @@ class LessonRepository:
     def get_by_id(db: Session, lesson_id: int) -> Optional[Lesson]:
         """Lấy lesson theo ID"""
         return db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    
+    @staticmethod
+    def create(db: Session, lesson_data: LessonCreate) -> Lesson:
+        """Tạo lesson mới"""
+        lesson = Lesson(**lesson_data.model_dump())
+        db.add(lesson)
+        db.commit()
+        db.refresh(lesson)
+        return lesson
+    
+    @staticmethod
+    def update(db: Session, lesson: Lesson, lesson_data: LessonUpdate) -> Lesson:
+        """Cập nhật lesson"""
+        update_data = lesson_data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(lesson, field, value)
+        db.commit()
+        db.refresh(lesson)
+        return lesson
+    
+    @staticmethod
+    def delete(db: Session, lesson: Lesson) -> bool:
+        """Xóa lesson"""
+        db.delete(lesson)
+        db.commit()
+        return True
     
     @staticmethod
     def get_progress(db: Session, user_id: int, lesson_id: int) -> Optional[LessonProgress]:
@@ -93,4 +120,28 @@ class LessonRepository:
         db.commit()
         db.refresh(progress)
         return progress
-
+    
+    @staticmethod
+    def update_quiz_progress(
+        db: Session,
+        progress: LessonProgress,
+        quiz_score: int,
+        passed: bool,
+        stars_earned: int
+    ) -> LessonProgress:
+        """Cập nhật quiz progress"""
+        from datetime import datetime
+        progress.quiz_score = quiz_score
+        progress.quiz_attempts += 1
+        progress.quiz_passed = passed
+        progress.last_accessed_at = datetime.utcnow()
+        
+        if passed and progress.stars_earned == 0:
+            # Chỉ cộng sao lần đầu qua quiz
+            progress.stars_earned = stars_earned
+            progress.status = "COMPLETED"
+            progress.completed_at = datetime.utcnow()
+        
+        db.commit()
+        db.refresh(progress)
+        return progress

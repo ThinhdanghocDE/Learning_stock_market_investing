@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
-from app.schemas.lesson import LessonResponse, LessonProgressResponse, LessonProgressCreate
+from app.schemas.lesson import (
+    LessonResponse, LessonProgressResponse, LessonProgressCreate,
+    LessonCreate, LessonUpdate, QuizSubmission, QuizResult,
+    LessonWithProgressResponse
+)
 from app.repositories.lesson_repository import LessonRepository
 from app.services.lesson_service import LessonService
 from app.controllers.auth import get_current_user
@@ -14,6 +18,8 @@ from app.models.user import User
 
 router = APIRouter(prefix="/api/lessons", tags=["Lessons"])
 
+
+# === Public Endpoints ===
 
 @router.get("", response_model=List[LessonResponse])
 async def get_lessons(
@@ -42,6 +48,8 @@ async def get_lesson(
     return lesson
 
 
+# === User Progress Endpoints ===
+
 @router.get("/{lesson_id}/progress", response_model=LessonProgressResponse)
 async def get_lesson_progress(
     lesson_id: int,
@@ -58,7 +66,7 @@ async def get_lesson_progress(
     return progress
 
 
-@router.get("/{lesson_id}/with-progress")
+@router.get("/{lesson_id}/with-progress", response_model=LessonWithProgressResponse)
 async def get_lesson_with_progress(
     lesson_id: int,
     current_user: User = Depends(get_current_user),
@@ -72,12 +80,12 @@ async def get_lesson_with_progress(
             detail="Lesson not found"
         )
     
-    return {
-        "lesson": result["lesson"],
-        "progress": result["progress"],
-        "can_access": result["can_access"],
-        "access_error": result["access_error"]
-    }
+    return LessonWithProgressResponse(
+        lesson=result["lesson"],
+        progress=result["progress"],
+        can_access=result["can_access"],
+        access_error=result["access_error"]
+    )
 
 
 @router.post("/{lesson_id}/start", response_model=LessonProgressResponse)
@@ -113,6 +121,27 @@ async def complete_lesson(
     return progress
 
 
+# === Quiz Endpoints ===
+
+@router.post("/{lesson_id}/submit-quiz", response_model=QuizResult)
+async def submit_quiz(
+    lesson_id: int,
+    submission: QuizSubmission,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Nộp quiz và nhận kết quả"""
+    result, error = LessonService.submit_quiz(db, current_user.id, lesson_id, submission)
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+    return result
+
+
+# === Progress List ===
+
 @router.get("/progress/all", response_model=List[LessonProgressResponse])
 async def get_all_progress(
     current_user: User = Depends(get_current_user),
@@ -122,6 +151,8 @@ async def get_all_progress(
     progress_list = LessonRepository.get_all_progress(db, current_user.id)
     return progress_list
 
+
+# === Chart Data ===
 
 @router.get("/{lesson_id}/chart-data")
 async def get_lesson_chart_data(
@@ -142,4 +173,3 @@ async def get_lesson_chart_data(
         )
     
     return chart_data
-
