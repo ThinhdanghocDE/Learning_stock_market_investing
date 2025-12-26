@@ -41,26 +41,21 @@ function AdminLayout() {
                 </div>
                 <nav className="sidebar-nav">
                     <NavLink to="/admin/homepage" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-                        <span className="nav-icon">🏠</span>
-                        <span>Trang chủ</span>
+                        Trang chủ
                     </NavLink>
                     <NavLink to="/admin/lessons" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-                        <span className="nav-icon">📚</span>
-                        <span>Bài học</span>
+                        Bài học
                     </NavLink>
                     <NavLink to="/admin/users" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-                        <span className="nav-icon">👥</span>
-                        <span>Người dùng</span>
+                        Người dùng
                     </NavLink>
                     <NavLink to="/admin/stats" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-                        <span className="nav-icon">📊</span>
-                        <span>Thống kê</span>
+                        Thống kê
                     </NavLink>
                 </nav>
                 <div className="sidebar-footer">
                     <NavLink to="/dashboard" className="nav-item back-link">
-                        <span className="nav-icon">←</span>
-                        <span>Về trang chính</span>
+                        ← Về trang chính
                     </NavLink>
                 </div>
             </aside>

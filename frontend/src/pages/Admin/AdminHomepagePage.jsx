@@ -73,6 +73,7 @@ function AdminHomepagePage() {
     return (
         <div className="admin-homepage-page">
             <h1 className="page-title">Quản lý Trang chủ</h1>
+            <p className="page-description">Chỉnh sửa nội dung hiển thị trên trang chủ</p>
 
             {message && (
                 <div className={`message ${message.type}`}>
@@ -81,15 +82,17 @@ function AdminHomepagePage() {
             )}
 
             <form onSubmit={handleSubmit} className="settings-form">
+                {/* Hero Section - Left */}
                 <section className="form-section">
                     <h2>Hero Section</h2>
                     <div className="form-group">
-                        <label>Tiêu đề chính (HTML allowed for breaks)</label>
+                        <label>Tiêu đề chính</label>
                         <input
                             type="text"
                             name="hero_headline"
                             value={settings.hero_headline}
                             onChange={handleChange}
+                            placeholder="Nhập tiêu đề chính..."
                             required
                         />
                     </div>
@@ -100,6 +103,7 @@ function AdminHomepagePage() {
                             value={settings.hero_subheadline}
                             onChange={handleChange}
                             rows="3"
+                            placeholder="Nhập mô tả ngắn..."
                             required
                         />
                     </div>
@@ -110,86 +114,17 @@ function AdminHomepagePage() {
                             name="hero_cta_text"
                             value={settings.hero_cta_text}
                             onChange={handleChange}
+                            placeholder="Vào Dashboard"
                             required
                         />
                     </div>
-
-                    <div className="form-group">
-                        <label>Banner Images (URLs)</label>
-                        <div className="banner-list">
-                            {settings.hero_banners && settings.hero_banners.map((url, index) => (
-                                <div key={index} className="banner-item">
-                                    <input
-                                        type="text"
-                                        value={url}
-                                        onChange={(e) => {
-                                            const newBanners = [...settings.hero_banners]
-                                            newBanners[index] = e.target.value
-                                            setSettings(prev => ({ ...prev, hero_banners: newBanners }))
-                                        }}
-                                        placeholder="Enter image URL"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn-remove"
-                                        onClick={() => {
-                                            const newBanners = settings.hero_banners.filter((_, i) => i !== index)
-                                            setSettings(prev => ({ ...prev, hero_banners: newBanners }))
-                                        }}
-                                    >
-                                        Xóa
-                                    </button>
-                                </div>
-                            ))}
-                            <button
-                                type="button"
-                                className="btn-add"
-                                onClick={() => setSettings(prev => ({
-                                    ...prev,
-                                    hero_banners: [...(prev.hero_banners || []), '']
-                                }))}
-                            >
-                                + Thêm Banner
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Stat 1 Value</label>
-                            <input name="stat_1_value" value={settings.stat_1_value} onChange={handleChange} />
-                        </div>
-                        <div className="form-group">
-                            <label>Stat 1 Label</label>
-                            <input name="stat_1_label" value={settings.stat_1_label} onChange={handleChange} />
-                        </div>
-                    </div>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Stat 2 Value</label>
-                            <input name="stat_2_value" value={settings.stat_2_value} onChange={handleChange} />
-                        </div>
-                        <div className="form-group">
-                            <label>Stat 2 Label</label>
-                            <input name="stat_2_label" value={settings.stat_2_label} onChange={handleChange} />
-                        </div>
-                    </div>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Stat 3 Value</label>
-                            <input name="stat_3_value" value={settings.stat_3_value} onChange={handleChange} />
-                        </div>
-                        <div className="form-group">
-                            <label>Stat 3 Label</label>
-                            <input name="stat_3_label" value={settings.stat_3_label} onChange={handleChange} />
-                        </div>
-                    </div>
                 </section>
 
+                {/* About Us Section - Right */}
                 <section className="form-section">
                     <h2>About Us Section</h2>
                     <div className="form-group">
-                        <label>Tiêu đề About Us</label>
+                        <label>Tiêu đề</label>
                         <input
                             type="text"
                             name="about_title"
@@ -209,34 +144,135 @@ function AdminHomepagePage() {
                         />
                     </div>
                     <div className="form-group">
-                        <label>Mô tả 1 (Vấn đề)</label>
-                        <textarea
-                            name="about_description_1"
-                            value={settings.about_description_1}
-                            onChange={handleChange}
-                            rows="4"
-                            required
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label>Mô tả 2 (Giải pháp)</label>
-                        <textarea
-                            name="about_description_2"
-                            value={settings.about_description_2}
-                            onChange={handleChange}
-                            rows="4"
-                            required
-                        />
-                    </div>
-                    <div className="form-group">
                         <label>About Image URL</label>
                         <input
                             type="text"
                             name="about_image_url"
                             value={settings.about_image_url || ''}
                             onChange={handleChange}
-                            placeholder="Enter about image URL"
+                            placeholder="https://example.com/image.jpg"
                         />
+                    </div>
+                </section>
+
+                {/* Banner Images - Full Width */}
+                <section className="form-section full-width">
+                    <h2>Banner Images</h2>
+                    <div className="banner-list">
+                        {settings.hero_banners && settings.hero_banners.map((url, index) => (
+                            <div key={index} className="banner-item">
+                                {url && <img src={url} alt={`Banner ${index + 1}`} className="banner-preview" />}
+                                <input
+                                    type="text"
+                                    value={url}
+                                    onChange={(e) => {
+                                        const newBanners = [...settings.hero_banners]
+                                        newBanners[index] = e.target.value
+                                        setSettings(prev => ({ ...prev, hero_banners: newBanners }))
+                                    }}
+                                    placeholder="Nhập URL hình ảnh..."
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-remove"
+                                    onClick={() => {
+                                        const newBanners = settings.hero_banners.filter((_, i) => i !== index)
+                                        setSettings(prev => ({ ...prev, hero_banners: newBanners }))
+                                    }}
+                                >
+                                    Xóa
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            type="button"
+                            className="btn-add"
+                            onClick={() => setSettings(prev => ({
+                                ...prev,
+                                hero_banners: [...(prev.hero_banners || []), '']
+                            }))}
+                        >
+                            + Thêm Banner
+                        </button>
+                    </div>
+                </section>
+
+                {/* Stats Section - Full Width */}
+                <section className="form-section full-width">
+                    <h2>Thống kê hiển thị</h2>
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <label>Stat 1</label>
+                            <input
+                                name="stat_1_value"
+                                value={settings.stat_1_value}
+                                onChange={handleChange}
+                                placeholder="10M+"
+                            />
+                            <input
+                                name="stat_1_label"
+                                value={settings.stat_1_label}
+                                onChange={handleChange}
+                                placeholder="Tiền ảo để thực hành"
+                            />
+                        </div>
+                        <div className="stat-card">
+                            <label>Stat 2</label>
+                            <input
+                                name="stat_2_value"
+                                value={settings.stat_2_value}
+                                onChange={handleChange}
+                                placeholder="1000+"
+                            />
+                            <input
+                                name="stat_2_label"
+                                value={settings.stat_2_label}
+                                onChange={handleChange}
+                                placeholder="Mã cổ phiếu VN"
+                            />
+                        </div>
+                        <div className="stat-card">
+                            <label>Stat 3</label>
+                            <input
+                                name="stat_3_value"
+                                value={settings.stat_3_value}
+                                onChange={handleChange}
+                                placeholder="24/7"
+                            />
+                            <input
+                                name="stat_3_label"
+                                value={settings.stat_3_label}
+                                onChange={handleChange}
+                                placeholder="AI hỗ trợ"
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                {/* Descriptions - Full Width with two columns */}
+                <section className="form-section full-width">
+                    <h2>Mô tả About Us</h2>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Mô tả 1 (Vấn đề)</label>
+                            <textarea
+                                name="about_description_1"
+                                value={settings.about_description_1}
+                                onChange={handleChange}
+                                rows="4"
+                                required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Mô tả 2 (Giải pháp)</label>
+                            <textarea
+                                name="about_description_2"
+                                value={settings.about_description_2}
+                                onChange={handleChange}
+                                rows="4"
+                                required
+                            />
+                        </div>
                     </div>
                 </section>
 
