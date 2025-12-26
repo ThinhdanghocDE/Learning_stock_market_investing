@@ -26,6 +26,16 @@ class LessonRepository:
         return db.query(Lesson).filter(Lesson.id == lesson_id).first()
     
     @staticmethod
+    def get_by_difficulty(db: Session, difficulty: str) -> List[Lesson]:
+        """Lấy tất cả lessons theo difficulty level (chỉ active)"""
+        return db.query(Lesson).filter(
+            and_(
+                Lesson.difficulty_level == difficulty,
+                Lesson.is_active == True
+            )
+        ).order_by(Lesson.order_index, Lesson.id).all()
+    
+    @staticmethod
     def create(db: Session, lesson_data: LessonCreate) -> Lesson:
         """Tạo lesson mới"""
         lesson = Lesson(**lesson_data.model_dump())
