@@ -72,3 +72,43 @@ async def get_latest_ohlc(
         "data": data
     }
 
+
+@router.get("/{symbol}/price")
+async def get_current_price(
+    symbol: str,
+    ch_client = Depends(get_clickhouse)
+):
+    """Lấy giá hiện tại của cổ phiếu (bao gồm open của phiên hôm nay)"""
+    repo = ClickHouseRepository(ch_client)
+    
+    # Lấy candle mới nhất
+    data = repo.get_latest_ohlc(symbol=symbol, interval="1m", limit=1)
+    
+    if not data:
+        raise HTTPException(status_code=404, detail=f"No price data found for {symbol}")
+    
+    latest = data[0]
+    
+    # Lấy giá mở cửa của phiên hôm nay (candle đầu tiên sau 9:00)
+    today = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+    today_data = repo.get_ohlc_historical(
+        symbol=symbol,
+        start_time=today,
+        end_time=datetime.now(),
+        interval="1m",
+        limit=1
+    )
+    
+    opening_price = today_data[0]["open"] if today_data else latest.get("open", latest.get("close"))
+    
+    return {
+        "symbol": symbol,
+        "price": latest.get("close"),
+        "open": opening_price,
+        "high": latest.get("high"),
+        "low": latest.get("low"),
+        "close": latest.get("close"),
+        "volume": latest.get("volume"),
+        "time": latest.get("time")
+    }
+
