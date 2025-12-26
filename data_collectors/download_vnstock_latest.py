@@ -61,8 +61,8 @@ def get_latest_data_vnstock(symbol):
         
         # 2. Lấy historical data cho ngày 22-12-2025
         print("  2. Thu lay historical data cho ngay 22-12-2025...")
-        start_date = '2025-12-24'
-        end_date = '2025-12-24'
+        start_date = '2025-12-25'
+        end_date = '2025-12-25'
         try:
             df_historical = quote.history(
                 start=start_date,
@@ -316,7 +316,7 @@ def insert_vnstock_data_to_clickhouse(df, symbol):
                         print(f"  WARNING: Cannot convert timestamp: {type(timestamp)} = {timestamp}, using current time")
                         timestamp = datetime.now()
                 
-                # Validate timestamp (đã filter trước nhưng vẫn kiểm tra để an toàn)
+                # Validate timestamp 
                 if timestamp.year < 2000:
                     # Không nên xảy ra vì đã filter trước, nhưng vẫn kiểm tra
                     skipped += 1
